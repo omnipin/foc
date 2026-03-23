@@ -1,6 +1,6 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import * as Hex from 'ox/Hex'
-import { type FilecoinChain, filProvider } from '../utils/constants.js'
+import { type FilecoinChain, filProvider } from '../utils/constants'
 
 const abi = {
   type: 'function',

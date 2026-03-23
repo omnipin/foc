@@ -1,3 +1,10 @@
 {
-  "name": "@omnipin/foc"
+  "name": "@omnipin/foc",
+  "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
+  "exports": {
+    "./fil-pay": "./src/fil-pay/index.ts",
+    "./data-set": "./src/data-set/index.ts",
+    "./sp-registry": "./src/sp-registry/index.ts"
+  },
+  "version": "0.0.0"
 }

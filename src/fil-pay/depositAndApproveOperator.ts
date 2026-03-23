@@ -4,7 +4,8 @@ import { fromNumber, type Hex } from 'ox/Hex'
 import * as Signature from 'ox/Signature'
 import { maxUint256 } from 'ox/Solidity'
 import * as Value from 'ox/Value'
-import { type FilecoinChain, filProvider } from '../utils/constants.js'
+import { type FilecoinChain, filProvider } from '../utils/constants'
+
 import { getErc20WithPermitData } from './getErc20WithPermitData.js'
 import { signErc20Permit } from './signErc20Permit.js'
 
@@ -32,7 +33,7 @@ export const depositAndApproveOperatorWriteParameters = async ({
   privateKey,
   address,
   amount,
-  deadline,
+  deadline = BigInt(Math.floor(Date.now() / 1000) + 3600),
   chain,
 }: {
   privateKey: Hex
@@ -41,8 +42,6 @@ export const depositAndApproveOperatorWriteParameters = async ({
   deadline?: bigint
   chain: FilecoinChain
 }) => {
-  deadline = deadline ?? BigInt(Math.floor(Date.now() / 1000) + 3600) // 1 hour
-
   const [balance, name, nonce, version] = await getErc20WithPermitData({
     address,
     chain,

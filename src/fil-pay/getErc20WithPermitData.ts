@@ -1,7 +1,8 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: multicall doesn't narrow the type to the amount of reads */
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import type { Address } from 'ox/Address'
-import { type FilecoinChain, filProvider } from '../utils/constants.js'
-import { multicall } from '../utils/multicall.js'
+import { type FilecoinChain, filProvider } from '../utils/constants'
+import { multicall } from '../utils/multicall'
 
 const erc20Abi = [
   {
@@ -73,11 +74,12 @@ export const getErc20WithPermitData = async ({
     chain,
   })
 
-  const data: [bigint, string, bigint, string] = [0n, '', 0n, '']
-
-  for (let i = 0; i < results.length; i++) {
-    data[i] = decodeResult(erc20Abi[i], results[i])
-  }
+  const data: [bigint, string, bigint, string] = [
+    decodeResult(erc20Abi[0], results[0]!),
+    decodeResult(erc20Abi[1], results[1]!),
+    decodeResult(erc20Abi[2], results[2]!),
+    decodeResult(erc20Abi[3], results[3]!),
+  ]
 
   return data
 }

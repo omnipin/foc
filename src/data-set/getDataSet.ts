@@ -1,5 +1,5 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
-import { type FilecoinChain, filProvider } from '../utils/constants.js'
+import { type FilecoinChain, filProvider } from '../utils/constants'
 
 const abi = {
   type: 'function',

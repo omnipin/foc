@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { filecoinMainnet } from '../utils/constants.js'
+import { filecoinMainnet } from '../utils/constants'
+
 import { getProviderMetadata } from './getProviderMetadata.js'
 
 describe('getProviderMetadata', () => {

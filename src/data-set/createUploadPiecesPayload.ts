@@ -1,14 +1,12 @@
-import { setTimeout } from 'node:timers/promises'
-import type { PieceLink } from '@web3-storage/data-segment'
 import { toHex } from 'multiformats/bytes'
-import { decode } from 'ox/AbiError'
 import * as AbiParameters from 'ox/AbiParameters'
 import type { Hex } from 'ox/Hex'
 import { sign } from 'ox/Secp256k1'
 import * as Signature from 'ox/Signature'
 import { getSignPayload } from 'ox/TypedData'
-import type { FilecoinChain } from '../utils/constants.js'
-import { getDataSet } from './getDataSet.js'
+import type { PieceLink } from '../utils/calculatePieceCID'
+import type { FilecoinChain } from '../utils/constants'
+import { getDataSet } from './getDataSet'
 
 const metadata = [{ key: 'withIPFSIndexing', value: '' }] as const
 const abi = [

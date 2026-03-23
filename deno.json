@@ -19,5 +19,6 @@
   "fmt": {
     "singleQuote": true,
     "semiColons": false
-  }
+  },
+  "name": "@omnipin/foc"
 }

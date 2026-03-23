@@ -16,7 +16,7 @@ const abi = [
   { type: 'bytes' },
 ] as const
 
-export const uploadPieceToDataSet = async ({
+export const createUploadPiecesPayload = async ({
   pieceCid,
   datasetId,
   privateKey,

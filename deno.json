@@ -12,9 +12,10 @@
     "./fil-pay": "./src/fil-pay/index.ts",
     "./data-set": "./src/data-set/index.ts",
     "./sp-registry": "./src/sp-registry/index.ts",
+    "./pdp-api": "./src/pdp-api/index.ts",
     "./utils": "./src/utils/index.ts"
   },
-  "version": "0.0.3",
+  "version": "0.0.5",
   "license": "MIT",
   "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
   "fmt": {

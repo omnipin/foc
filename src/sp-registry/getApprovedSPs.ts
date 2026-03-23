@@ -23,7 +23,14 @@ const abi = [
   },
 ] as const
 
-export const getApprovedSPs = async ({ chain }: { chain: FilecoinChain }) => {
+export const getApprovedSPs = async ({
+  chain,
+}: {
+  chain: FilecoinChain
+}): Promise<{
+  providerIds: readonly bigint[]
+  providerCount: bigint
+}> => {
   const provider = filProvider[chain.id]
   // 1) Get total count
   const lenData = encodeData(abi[0])

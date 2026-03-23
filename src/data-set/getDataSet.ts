@@ -1,5 +1,6 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import { type FilecoinChain, filProvider } from '../utils/constants'
+import type { DataSet } from './types'
 
 const abi = {
   type: 'function',
@@ -34,7 +35,7 @@ export const getDataSet = async ({
 }: {
   dataSetId: bigint
   chain: FilecoinChain
-}) => {
+}): Promise<DataSet> => {
   const provider = filProvider[chain.id]
   const result = await provider.request({
     method: 'eth_call',

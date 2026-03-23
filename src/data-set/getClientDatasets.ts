@@ -1,6 +1,7 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import type { Address } from 'ox/Address'
 import { type FilecoinChain, filProvider } from '../utils/constants'
+import type { DataSet } from './types'
 
 const abi = {
   type: 'function',
@@ -88,7 +89,7 @@ export const getClientDataSets = async ({
 }: {
   address: Address
   chain: FilecoinChain
-}) => {
+}): Promise<readonly DataSet[]> => {
   const data = encodeData(abi, [address])
   const provider = filProvider[chain.id]
 

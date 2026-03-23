@@ -23,7 +23,9 @@ type PickProviderParameters = {
     }
 )
 
-export const pickProvider = async (params: PickProviderParameters) => {
+export const pickProvider = async (
+  params: PickProviderParameters,
+): Promise<bigint> => {
   let providerId: bigint
   if (params.providerAddress !== undefined) {
     providerId = await getProviderIdByAddress(params)

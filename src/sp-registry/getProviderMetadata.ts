@@ -72,7 +72,10 @@ export const getProviderMetadata = async ({
 }: {
   chain: FilecoinChain
   providerId: bigint
-}) => {
+}): Promise<{
+  address: `0x${string}`
+  serviceURL: string
+}> => {
   const provider = filProvider[chain.id]
   const result = await provider.request({
     method: 'eth_call',

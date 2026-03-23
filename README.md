@@ -1,15 +1,12 @@
 # @omnipin/foc
 
-To install dependencies:
+TypeScript library for interacting with Filecoin Onchain Cloud. Based on [Ox](https://oxlib.sh).
 
-```bash
-bun install
-```
+## Features
 
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.3.5. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+- Utilities for calculating Piece CIDs
+- Provider registry querying
+- Optimal SP selection via `pickProvider`
+- Filecoin Pay integration
+- Curio PDP API client for piece upload and verification
+- Data set management

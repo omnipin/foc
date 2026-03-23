@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { fromPublicKey } from 'ox/Address'
 import { getPublicKey, randomPrivateKey } from 'ox/Secp256k1'
-import { pickProvider } from './index'
-import { filecoinMainnet } from './utils/constants'
+import { filecoinMainnet } from '../utils/constants'
+import { pickProvider } from './pickProvider'
 
 describe('pickProvider', () => {
   it('should choose a random SP that has not uploaded anything yet', async () => {

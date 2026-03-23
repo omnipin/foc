@@ -8,8 +8,8 @@ describe('getApprovedSPs', () => {
     const { providerIds, providerCount } = await getApprovedSPs({
       chain: filecoinMainnet,
     })
-    expect(providerIds).toEqual([1n, 5n])
-    expect(providerCount).toEqual(2n)
+    expect(providerIds).toEqual([1n, 5n, 7n])
+    expect(providerCount).toEqual(3n)
   })
   it('should work on testnet', async () => {
     const { providerIds, providerCount } = await getApprovedSPs({

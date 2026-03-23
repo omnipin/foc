@@ -14,7 +14,7 @@
     "./sp-registry": "./src/sp-registry/index.ts",
     "./utils": "./src/utils/index.ts"
   },
-  "version": "0.0.1",
+  "version": "0.0.3",
   "license": "MIT",
   "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
   "fmt": {

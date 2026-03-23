@@ -84,7 +84,7 @@ export const filecoinCalibration = {
 
 export const filecoinChains = {}
 
-export const filProvider = {
+export const filProvider: Record<FilecoinChainId, Provider.Provider> = {
   [filecoinMainnet.id]: Provider.from(
     fromHttp('https://api.node.glif.io/rpc/v1'),
   ),

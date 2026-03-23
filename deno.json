@@ -11,7 +11,8 @@
   "exports": {
     "./fil-pay": "./src/fil-pay/index.ts",
     "./data-set": "./src/data-set/index.ts",
-    "./sp-registry": "./src/sp-registry/index.ts"
+    "./sp-registry": "./src/sp-registry/index.ts",
+    "./utils": "./src/utils/index.ts"
   },
   "version": "0.0.0",
   "license": "MIT",

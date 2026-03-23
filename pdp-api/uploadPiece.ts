@@ -6,7 +6,7 @@ export const uploadPiece = async ({
   providerURL: string
   pieceCid: string
   bytes: Uint8Array
-}): Promise<string | Response> => {
+}): Promise<string | null> => {
   let res = await fetch(new URL('/pdp/piece', providerURL), {
     method: 'POST',
     headers: {
@@ -42,5 +42,5 @@ export const uploadPiece = async ({
     return uploadUuid
   }
   if (!res.ok) throw res.statusText
-  return res
+  return null
 }

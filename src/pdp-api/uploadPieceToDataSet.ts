@@ -11,7 +11,10 @@ export const uploadPieceToDataSet = async ({
   pieceCid: PieceLink
   extraData?: Hex
   providerURL: string
-}) => {
+}): Promise<{
+  hash: Hex
+  statusUrl: string
+}> => {
   const res = await fetch(
     new URL(`/pdp/data-sets/${datasetId}/pieces`, providerURL),
     {

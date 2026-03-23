@@ -3,6 +3,7 @@ import type { Hex } from 'ox/Hex'
 import { sign } from 'ox/Secp256k1'
 import { getSignPayload } from 'ox/TypedData'
 import type { FilecoinChain } from '../utils/constants.ts'
+import type { Signature } from 'ox/Signature'
 
 export const signErc20Permit = ({
   privateKey,
@@ -22,7 +23,7 @@ export const signErc20Permit = ({
   name: string
   version: string
   chain: FilecoinChain
-}) => {
+}): Signature => {
   return sign({
     privateKey,
     payload: getSignPayload({

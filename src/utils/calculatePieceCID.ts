@@ -1,4 +1,4 @@
-import { sha256 } from '@noble/hashes/sha2'
+import { sha256 } from '@noble/hashes/sha2.js'
 import * as Raw from 'multiformats/codecs/raw'
 import { create as createDigest } from 'multiformats/hashes/digest'
 import * as Link from 'multiformats/link'
@@ -46,8 +46,9 @@ function fr32Pad(source: Uint8Array): Uint8Array {
       const curr = source[readOffset + i] ?? 0
       const prev = source[readOffset + i - 1] ?? 0
       const outIndex = writeOffset + i
-      if (output[outIndex] === undefined)
+      if (output[outIndex] === undefined) {
         throw new Error('fr32 write out of bounds')
+      }
       output[outIndex] = ((curr << 2) | (prev >> 6)) & 0xff
     }
 
@@ -59,8 +60,9 @@ function fr32Pad(source: Uint8Array): Uint8Array {
       const curr = source[readOffset + i] ?? 0
       const prev = source[readOffset + i - 1] ?? 0
       const outIndex = writeOffset + i
-      if (output[outIndex] === undefined)
+      if (output[outIndex] === undefined) {
         throw new Error('fr32 write out of bounds')
+      }
       output[outIndex] = ((curr << 4) | (prev >> 4)) & 0xff
     }
 
@@ -72,14 +74,16 @@ function fr32Pad(source: Uint8Array): Uint8Array {
       const curr = source[readOffset + i] ?? 0
       const prev = source[readOffset + i - 1] ?? 0
       const outIndex = writeOffset + i
-      if (output[outIndex] === undefined)
+      if (output[outIndex] === undefined) {
         throw new Error('fr32 write out of bounds')
+      }
       output[outIndex] = ((curr << 6) | (prev >> 2)) & 0xff
     }
 
     const last = source[readOffset + 126] ?? 0
-    if (output[writeOffset + 127] === undefined)
+    if (output[writeOffset + 127] === undefined) {
       throw new Error('fr32 write out of bounds')
+    }
     output[writeOffset + 127] = (last >> 2) & 0xff
   }
 

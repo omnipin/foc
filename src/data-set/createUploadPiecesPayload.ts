@@ -4,9 +4,9 @@ import type { Hex } from 'ox/Hex'
 import { sign } from 'ox/Secp256k1'
 import * as Signature from 'ox/Signature'
 import { getSignPayload } from 'ox/TypedData'
-import type { PieceLink } from '../utils/calculatePieceCID'
-import type { FilecoinChain } from '../utils/constants'
-import { getDataSet } from './getDataSet'
+import type { PieceLink } from '../utils/calculatePieceCID.ts'
+import type { FilecoinChain } from '../utils/constants.ts'
+import { getDataSet } from './getDataSet.ts'
 
 const metadata = [{ key: 'withIPFSIndexing', value: '' }] as const
 const abi = [

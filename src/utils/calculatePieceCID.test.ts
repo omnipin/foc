@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'bun:test'
-import { calculatePieceCID } from './calculatePieceCID'
+import { describe, it } from '@std/testing/bdd'
+import { expect } from '@std/expect'
+import { calculatePieceCID } from './calculatePieceCID.ts'
 
 describe('calculatePieceCID', () => {
   it('empty buf', () => {

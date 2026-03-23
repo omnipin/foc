@@ -1,1 +1,1 @@
-export * from './calculatePieceCID'
+export * from './calculatePieceCID.ts'

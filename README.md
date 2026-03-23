@@ -1,6 +1,7 @@
 # @omnipin/foc
 
-TypeScript library for interacting with Filecoin Onchain Cloud. Based on [Ox](https://oxlib.sh).
+TypeScript library for interacting with Filecoin Onchain Cloud. Based on
+[Ox](https://oxlib.sh).
 
 ## Features
 

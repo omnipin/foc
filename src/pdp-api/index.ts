@@ -1,3 +1,3 @@
-export * from './createDataSetAndAddPiece'
-export * from './uploadPiece'
-export * from './verifyPiece'
+export * from './createDataSetAndAddPiece.ts'
+export * from './uploadPiece.ts'
+export * from './verifyPiece.ts'

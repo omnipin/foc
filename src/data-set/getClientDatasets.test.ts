@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'bun:test'
-import { filecoinMainnet } from '../utils/constants'
-import { getClientDataSets } from './getClientDatasets'
+import { describe, it } from '@std/testing/bdd'
+import { expect } from '@std/expect'
+import { filecoinMainnet } from '../utils/constants.ts'
+import { getClientDataSets } from './getClientDatasets.ts'
 
 describe('getClientDatasets', () => {
   it('should list client data sets for an Ethereum address', async () => {

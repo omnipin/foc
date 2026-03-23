@@ -1,27 +1,29 @@
 import { randomInt } from 'node:crypto'
 import type { Address } from 'ox/Address'
-import { getClientDataSets } from '../data-set/getClientDatasets'
+import { getClientDataSets } from '../data-set/getClientDatasets.ts'
 
-import type { FilecoinChain } from '../utils/constants'
-import { getApprovedSPs } from './getApprovedSPs'
-import { getProviderIdByAddress } from './getProviderIdByAddress'
+import type { FilecoinChain } from '../utils/constants.ts'
+import { getApprovedSPs } from './getApprovedSPs.ts'
+import { getProviderIdByAddress } from './getProviderIdByAddress.ts'
 
-type PickProviderParameters = {
-  chain: FilecoinChain
-} & (
-  | {
+type PickProviderParameters =
+  & {
+    chain: FilecoinChain
+  }
+  & (
+    | {
       providerAddress: Address
       address?: never
     }
-  | {
+    | {
       address: Address
       providerAddress?: never
     }
-  | {
+    | {
       address?: never
       providerAddress?: never
     }
-)
+  )
 
 export const pickProvider = async (
   params: PickProviderParameters,
@@ -32,8 +34,9 @@ export const pickProvider = async (
   } else if (params.address !== undefined) {
     const dataSets = (await getClientDataSets(params)).toSorted((a, b) => {
       // then newest client dataset
-      if (a.clientDataSetId !== b.clientDataSetId)
+      if (a.clientDataSetId !== b.clientDataSetId) {
         return Number(b.clientDataSetId - a.clientDataSetId)
+      }
       // deterministic tie-break
       return Number(b.providerId - a.providerId)
     })

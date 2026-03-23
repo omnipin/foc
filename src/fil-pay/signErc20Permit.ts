@@ -2,9 +2,9 @@ import type { Address } from 'ox/Address'
 import type { Hex } from 'ox/Hex'
 import { sign } from 'ox/Secp256k1'
 import { getSignPayload } from 'ox/TypedData'
-import type { FilecoinChain } from '../utils/constants'
+import type { FilecoinChain } from '../utils/constants.ts'
 
-export const signErc20Permit = async ({
+export const signErc20Permit = ({
   privateKey,
   address,
   amount,

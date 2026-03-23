@@ -1,6 +1,6 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import type { Address } from 'ox/Address'
-import { type FilecoinChain, filProvider } from '../utils/constants'
+import { type FilecoinChain, filProvider } from '../utils/constants.ts'
 
 const abi = {
   type: 'function',

@@ -1,5 +1,5 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
-import { type FilecoinChain, filProvider } from '../utils/constants'
+import { type FilecoinChain, filProvider } from '../utils/constants.ts'
 
 const abi = {
   type: 'function',
@@ -69,8 +69,9 @@ export const getServicePrice = async ({
     decodeResult(abi, result)
 
   const linearCost = (BigInt(sizeInBytes) * pricePerTiBPerMonthNoCDN) / TiB
-  const actualCost =
-    linearCost > minimumPricePerMonth ? linearCost : minimumPricePerMonth
+  const actualCost = linearCost > minimumPricePerMonth
+    ? linearCost
+    : minimumPricePerMonth
   const costWithBuffer = (actualCost * 110n) / 100n // apply 10% buffer for safety
   const perEpochRate = costWithBuffer / epochsPerMonth
 

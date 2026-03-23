@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, it } from '@std/testing/bdd'
+import { expect } from '@std/expect'
 import { fromPublicKey } from 'ox/Address'
 import { getPublicKey, randomPrivateKey } from 'ox/Secp256k1'
-import { filecoinMainnet } from '../utils/constants'
-import { pickProvider } from './pickProvider'
+import { filecoinMainnet } from '../utils/constants.ts'
+import { pickProvider } from './pickProvider.ts'
 
 describe('pickProvider', () => {
   it('should choose a random SP that has not uploaded anything yet', async () => {

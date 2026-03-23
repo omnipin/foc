@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, it } from '@std/testing/bdd'
+import { expect } from '@std/expect'
 import { randomInt } from 'node:crypto'
-import { calculatePieceCID } from '../utils/calculatePieceCID'
-import { uploadPieceToDataSet } from './uploadPieceToDataSet'
+import { calculatePieceCID } from '../utils/calculatePieceCID.ts'
+import { uploadPieceToDataSet } from './uploadPieceToDataSet.ts'
 
 describe('uploadPieceToDataSet', () => {
   it('should throw on a non-existent data set', async () => {

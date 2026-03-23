@@ -4,10 +4,10 @@ import { fromNumber, type Hex } from 'ox/Hex'
 import * as Signature from 'ox/Signature'
 import { maxUint256 } from 'ox/Solidity'
 import * as Value from 'ox/Value'
-import { type FilecoinChain, filProvider } from '../utils/constants'
+import { type FilecoinChain, filProvider } from '../utils/constants.ts'
 
-import { getErc20WithPermitData } from './getErc20WithPermitData.js'
-import { signErc20Permit } from './signErc20Permit.js'
+import { getErc20WithPermitData } from './getErc20WithPermitData.ts'
+import { signErc20Permit } from './signErc20Permit.ts'
 
 const abi = {
   type: 'function',
@@ -47,10 +47,13 @@ export const depositAndApproveOperatorWriteParameters = async ({
     chain,
   })
 
-  if (balance < amount)
+  if (balance < amount) {
     throw new Error(
-      `Not enough USDfc to deposit (need: ${Value.format(amount - balance, 18).slice(0, 5)})`,
+      `Not enough USDfc to deposit (need: ${
+        Value.format(amount - balance, 18).slice(0, 5)
+      })`,
     )
+  }
 
   const { r, s, yParity } = await signErc20Permit({
     privateKey,

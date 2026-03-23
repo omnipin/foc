@@ -1,0 +1,23 @@
+{
+  "imports": {
+    "@ipld/car": "npm:@ipld/car@^5.4.2",
+    "@noble/hashes": "jsr:@noble/hashes@^2.0.1",
+    "@std/expect": "jsr:@std/expect@^1.0.18",
+    "@std/testing": "jsr:@std/testing@^1.0.17",
+    "multiformats": "npm:multiformats@^13.4.2",
+    "ox": "npm:ox@^0.14.8",
+    "varint": "npm:varint@^6.0.0"
+  },
+  "exports": {
+    "./fil-pay": "./src/fil-pay/index.ts",
+    "./data-set": "./src/data-set/index.ts",
+    "./sp-registry": "./src/sp-registry/index.ts"
+  },
+  "version": "0.0.0",
+  "license": "MIT",
+  "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
+  "fmt": {
+    "singleQuote": true,
+    "semiColons": false
+  }
+}

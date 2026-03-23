@@ -17,6 +17,9 @@ export const uploadPiece = async ({
     }),
   })
 
+  // Cancel response body to prevent resource leaks
+  await res.body?.cancel()
+
   if (res.status === 201) {
     const location = res.headers.get('Location')
 
@@ -36,11 +39,14 @@ export const uploadPiece = async ({
         'Content-Type': 'application/octet-stream',
         'Content-Length': bytes.length.toString(),
       },
-      body: bytes,
+      body: bytes as BodyInit,
     })
+
+    // Cancel response body to prevent resource leaks
+    await res.body?.cancel()
 
     return uploadUuid
   }
-  if (!res.ok) throw res.statusText
+  if (!res.ok) throw new Error(res.statusText)
   return null
 }

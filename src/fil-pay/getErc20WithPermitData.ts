@@ -1,8 +1,8 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: multicall doesn't narrow the type to the amount of reads */
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import type { Address } from 'ox/Address'
-import { type FilecoinChain, filProvider } from '../utils/constants'
-import { multicall } from '../utils/multicall'
+import { type FilecoinChain, filProvider } from '../utils/constants.ts'
+import { multicall } from '../utils/multicall.ts'
 
 const erc20Abi = [
   {

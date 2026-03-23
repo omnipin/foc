@@ -1,5 +1,5 @@
 import type { Hex } from 'ox/Hex'
-import type { FilecoinChain } from '../utils/constants'
+import type { FilecoinChain } from '../utils/constants.ts'
 
 export const createDataSetAndAddPiece = async ({
   pieceCid,
@@ -38,6 +38,8 @@ export const createDataSetAndAddPiece = async ({
   )
 
   if (!res.ok) throw res
+
+  await res.body?.cancel()
 
   const location = res.headers.get('Location')
   if (!location) throw new Error('Location header not found')

@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, it } from '@std/testing/bdd'
+import { expect } from '@std/expect'
 import { randomInt } from 'node:crypto'
 import { CarWriter } from '@ipld/car/writer'
 import { CID } from 'multiformats/cid'
 import * as raw from 'multiformats/codecs/raw'
 import { sha256 } from 'multiformats/hashes/sha2'
-import { calculatePieceCID } from '../utils/calculatePieceCID'
-import { uploadPiece } from './uploadPiece'
+import { calculatePieceCID } from '../utils/calculatePieceCID.ts'
+import { uploadPiece } from './uploadPiece.ts'
 
 // random payload to test uploads
 const payload = new TextEncoder().encode(
@@ -35,13 +36,16 @@ for (const c of chunks) {
 
 describe('uploadPiece', () => {
   it('should throw on a dead SP', async () => {
-    expect(
-      uploadPiece({
+    try {
+      await uploadPiece({
         providerURL: 'https://pdp-calib.filweb3.com',
         pieceCid: calculatePieceCID(bytes).toString(),
         bytes,
-      }),
-    ).rejects.toThrow('Bad Gateway')
+      })
+    } catch (err) {
+      expect(err).toBeInstanceOf(Error)
+      expect((err as Error).message).toEqual('Bad Gateway')
+    }
   })
   it('should upload on an approved SP', async () => {
     const uuid = await uploadPiece({
@@ -49,7 +53,7 @@ describe('uploadPiece', () => {
       pieceCid: calculatePieceCID(bytes).toString(),
       bytes,
     })
-    expect(uuid).toBeTypeOf('string')
+    expect(typeof uuid).toEqual('string')
     expect(uuid).toMatch(/([a-fA-F0-9-]+)/)
   })
 })

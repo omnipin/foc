@@ -37,9 +37,11 @@ export const createDataSetAndAddPiece = async ({
     },
   )
 
-  if (!res.ok) throw res
+  const text = await res.text()
 
-  await res.body?.cancel()
+  if (!res.ok) {
+    throw new Error(`Failed to create data set and add piece: ${text}`)
+  }
 
   const location = res.headers.get('Location')
   if (!location) throw new Error('Location header not found')

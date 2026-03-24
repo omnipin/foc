@@ -28,11 +28,18 @@ type PickProviderParameters =
 export const pickProvider = async (
   params: PickProviderParameters,
 ): Promise<bigint> => {
-  let providerId: bigint
+  const { providerIds, providerCount } = await getApprovedSPs({
+    chain: params.chain,
+  })
+
+  let providerId = providerIds[randomInt(Number(providerCount))]!
+
   if (params.providerAddress !== undefined) {
     providerId = await getProviderIdByAddress(params)
   } else if (params.address !== undefined) {
-    const dataSets = (await getClientDataSets(params)).toSorted((a, b) => {
+    const activeDataSets = (await getClientDataSets(params)).filter((ds) =>
+      ds.pdpEndEpoch === 0n && providerIds.includes(ds.providerId)
+    ).toSorted((a, b) => {
       // then newest client dataset
       if (a.clientDataSetId !== b.clientDataSetId) {
         return Number(b.clientDataSetId - a.clientDataSetId)
@@ -41,25 +48,11 @@ export const pickProvider = async (
       return Number(b.providerId - a.providerId)
     })
 
-    const activeDataSets = dataSets.filter((ds) => ds.pdpEndEpoch === 0n)
-
     if (activeDataSets.length > 0) {
       // biome-ignore lint/style/noNonNullAssertion: if there is more than one data set it must be defined
       const lastProvider = activeDataSets.at(-1)!
       providerId = lastProvider.providerId
-    } else {
-      const { providerIds, providerCount } = await getApprovedSPs({
-        chain: params.chain,
-      })
-      // biome-ignore lint/style/noNonNullAssertion: providerCount equals providerIds.length
-      providerId = providerIds[randomInt(Number(providerCount))]!
     }
-  } else {
-    const { providerIds, providerCount } = await getApprovedSPs({
-      chain: params.chain,
-    })
-    // biome-ignore lint/style/noNonNullAssertion: providerCount equals providerIds.length
-    providerId = providerIds[randomInt(Number(providerCount))]!
   }
 
   return providerId

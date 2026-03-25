@@ -19,14 +19,14 @@ export const createDataSetPayload = ({
   payee,
   payer,
   privateKey,
+  clientDataSetId = BigInt(randomInt(10 ** 8)),
 }: {
   chain: FilecoinChain
   payee: Address
   payer: Address
   privateKey: Hex
+  clientDataSetId?: bigint
 }): Hex => {
-  const clientDataSetId = BigInt(randomInt(10 ** 8))
-
   const recordKeeper = chain.contracts.storage.address
 
   const payload = getSignPayload({

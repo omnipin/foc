@@ -6,7 +6,6 @@ import * as Signature from 'ox/Signature'
 import { getSignPayload } from 'ox/TypedData'
 import type { PieceLink } from '../utils/calculatePieceCID.ts'
 import type { FilecoinChain } from '../utils/constants.ts'
-import { getDataSet } from './getDataSet.ts'
 
 const metadata = [{ key: 'withIPFSIndexing', value: '' }] as const
 const abi = [
@@ -16,28 +15,21 @@ const abi = [
   { type: 'bytes' },
 ] as const
 
-export const createUploadPiecesPayload = async ({
+export const createUploadPiecesPayload = ({
   pieceCid,
-  datasetId,
   privateKey,
   nonce,
   clientDataSetId,
   chain,
 }: {
   pieceCid: PieceLink
-  datasetId: bigint
   privateKey: Hex
   nonce: bigint
-  clientDataSetId?: bigint
+  clientDataSetId: bigint
   chain: FilecoinChain
-}): Promise<Hex> => {
+}): Hex => {
   const pieces = [pieceCid]
   const pieceData = [{ data: `0x${toHex(pieceCid.bytes)}` }] as const
-
-  if (!clientDataSetId) {
-    const dataSet = await getDataSet({ dataSetId: datasetId, chain })
-    clientDataSetId = dataSet.clientDataSetId
-  }
 
   const payload = getSignPayload({
     types: {

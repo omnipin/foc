@@ -12,6 +12,7 @@
     "jsr:@std/testing@^1.0.17": "1.0.17",
     "npm:@ipld/car@^5.4.2": "5.4.2",
     "npm:@noble/hashes@^2.0.1": "2.0.1",
+    "npm:@types/node@^25.5.0": "25.5.0",
     "npm:multiformats@^13.4.2": "13.4.2",
     "npm:ox@~0.14.8": "0.14.8",
     "npm:varint@6": "6.0.0"
@@ -117,6 +118,12 @@
         "@scure/base"
       ]
     },
+    "@types/node@25.5.0": {
+      "integrity": "sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw==",
+      "dependencies": [
+        "undici-types"
+      ]
+    },
     "abitype@1.2.3": {
       "integrity": "sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg=="
     },
@@ -143,6 +150,9 @@
         "eventemitter3"
       ]
     },
+    "undici-types@7.18.2": {
+      "integrity": "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w=="
+    },
     "varint@6.0.0": {
       "integrity": "sha512-cXEIW6cfr15lFv563k4GuVuW/fiwjknytD37jIOLSdSWuOI6WnO/oKwmP2FQTU2l01LP8/M5TSAJpzUaGe3uWg=="
     }
@@ -153,6 +163,7 @@
       "jsr:@std/testing@^1.0.17",
       "npm:@ipld/car@^5.4.2",
       "npm:@noble/hashes@^2.0.1",
+      "npm:@types/node@^25.5.0",
       "npm:multiformats@^13.4.2",
       "npm:ox@~0.14.8",
       "npm:varint@6"

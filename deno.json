@@ -4,6 +4,7 @@
     "@noble/hashes": "npm:@noble/hashes@^2.0.1",
     "@std/expect": "jsr:@std/expect@^1.0.18",
     "@std/testing": "jsr:@std/testing@^1.0.17",
+    "@types/node": "npm:@types/node@^25.5.0",
     "multiformats": "npm:multiformats@^13.4.2",
     "ox": "npm:ox@^0.14.8",
     "varint": "npm:varint@^6.0.0"

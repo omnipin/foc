@@ -96,13 +96,8 @@ function trunc254InPlace(node: Uint8Array): void {
   node[31] = last & 0b0011_1111
 }
 
-function hashNode(left: Uint8Array, right: Uint8Array): Uint8Array {
-  const input = new Uint8Array(64)
-  input.set(left, 0)
-  input.set(right, 32)
-  const out = new Uint8Array(sha256(input))
-  trunc254InPlace(out)
-  return out
+function trunc254AtOffset(buf: Uint8Array, offset: number): void {
+  buf[offset + 31] = buf[offset + 31]! & 0b0011_1111
 }
 
 function buildPieceRoot(fr32: Uint8Array): Uint8Array {
@@ -112,30 +107,43 @@ function buildPieceRoot(fr32: Uint8Array): Uint8Array {
 
   const leavesCount = fr32.length / 32
   const targetLeaves = 1 << Math.ceil(Math.log2(leavesCount))
-  let level: Uint8Array[] = new Array(targetLeaves)
 
+  // Use a single flat buffer instead of millions of individual Uint8Array(32)
+  // objects. Each tiny typed array has ~160 bytes of V8/JSC object overhead,
+  // so 16M leaves would cost ~2.5 GB in overhead alone. A flat buffer
+  // stores the same data in exactly targetLeaves*32 bytes.
+  const buf = new Uint8Array(targetLeaves * 32)
+
+  // Copy fr32 data into flat buffer (remaining bytes are already zero)
+  buf.set(fr32, 0)
+
+  // Truncate all leaves in-place
   for (let i = 0; i < targetLeaves; i++) {
-    const leaf = new Uint8Array(32)
-    const start = i * 32
-    if (start < fr32.length) leaf.set(fr32.subarray(start, start + 32))
-    trunc254InPlace(leaf)
-    level[i] = leaf
+    trunc254AtOffset(buf, i * 32)
   }
 
-  while (level.length > 1) {
-    const next: Uint8Array[] = new Array(level.length / 2)
-    for (let i = 0; i < level.length; i += 2) {
-      const left = level[i]
-      const right = level[i + 1]
-      if (!left || !right) throw new Error('invalid tree state')
-      next[i / 2] = hashNode(left, right)
+  // Reusable 64-byte input buffer for sha256 to avoid per-hash allocations
+  const hashInput = new Uint8Array(64)
+
+  // Merkle tree reduction in-place: hash pairs and write results back to
+  // the beginning of the buffer, halving the active region each iteration.
+  let count = targetLeaves
+  while (count > 1) {
+    const half = count / 2
+    for (let i = 0; i < half; i++) {
+      const leftOff = i * 2 * 32
+      const rightOff = leftOff + 32
+      hashInput.set(buf.subarray(leftOff, leftOff + 32), 0)
+      hashInput.set(buf.subarray(rightOff, rightOff + 32), 32)
+      const hash = sha256(hashInput)
+      const destOff = i * 32
+      buf.set(hash, destOff)
+      trunc254AtOffset(buf, destOff)
     }
-    level = next
+    count = half
   }
 
-  const root = level[0]
-  if (!root) throw new Error('failed to build piece root')
-  return root
+  return buf.slice(0, 32)
 }
 
 function pieceMultihashDigest(data: Uint8Array): Uint8Array {

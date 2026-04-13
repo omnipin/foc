@@ -20,6 +20,9 @@ export type FilecoinChain = {
     storage: {
       address: Address
     }
+    pdpVerifier: {
+      address: Address
+    }
     providerRegistry: {
       address: Address
     }
@@ -46,11 +49,14 @@ export const filecoinMainnet = {
     storage: {
       address: '0x8408502033C418E1bbC97cE9ac48E5528F371A9f',
     },
+    pdpVerifier: {
+      address: '0xBADd0B92C1c71d02E7d520f64c0876538fa2557F',
+    },
     providerRegistry: {
       address: '0xf55dDbf63F1b55c3F1D4FA7e339a68AB7b64A5eB',
     },
     storageView: {
-      address: '0x638a4986332bF9B889E5D7435B966C5ecdE077Fa',
+      address: '0xB1B3A3d979c1f233c1021EF98dff9c0932FF1bb9',
     },
   },
   blockExplorer: 'https://filecoin.blockscout.com',
@@ -72,11 +78,14 @@ export const filecoinCalibration = {
     storage: {
       address: '0x02925630df557F957f70E112bA06e50965417CA0',
     },
+    pdpVerifier: {
+      address: '0x85e366Cf9DD2c0aE37E963d9556F5f4718d6417C',
+    },
     providerRegistry: {
       address: '0x839e5c9988e4e9977d40708d0094103c0839Ac9D',
     },
     storageView: {
-      address: '0x53d235D474585EC102ccaB7e0cdcE951dD00f716',
+      address: '0x537320bd004a7FDd3c1932ca64BD88268301322A',
     },
   },
   blockExplorer: 'https://filecoin-testnet.blockscout.com',

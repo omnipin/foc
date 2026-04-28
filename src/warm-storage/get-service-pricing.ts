@@ -43,17 +43,28 @@ const abi = {
   stateMutability: 'view',
 } as const
 
-const TiB = 1024n ** 4n
+export type GetServicePricingOutput = {
+  pricePerTiBPerMonthNoCDN: bigint
+  pricePerTiBCdnEgress: bigint
+  pricePerTiBCacheMissEgress: bigint
+  tokenAddress: `0x${string}`
+  epochsPerMonth: bigint
+  minimumPricePerMonth: bigint
+}
 
-export const getServicePrice = async ({
+/**
+ * Read raw service pricing from the FWSS storage contract.
+ *
+ * Mirrors `@filoz/synapse-core/warm-storage/getServicePrice` (returns the
+ * full pricing struct, leaving derived rate calculations to
+ * {@link calculateEffectiveRate}).
+ */
+export const getServicePricing = async ({
   chain,
-  size: sizeInBytes,
 }: {
   chain: FilecoinChain
-  size: number
-}) => {
+}): Promise<GetServicePricingOutput> => {
   const provider = filProvider[chain.id]
-
   const result = await provider.request({
     method: 'eth_call',
     params: [
@@ -65,20 +76,6 @@ export const getServicePrice = async ({
     ],
   })
 
-  const { minimumPricePerMonth, pricePerTiBPerMonthNoCDN, epochsPerMonth } =
-    decodeResult(abi, result)
-
-  const linearCost = (BigInt(sizeInBytes) * pricePerTiBPerMonthNoCDN) / TiB
-  const actualCost = linearCost > minimumPricePerMonth
-    ? linearCost
-    : minimumPricePerMonth
-  const costWithBuffer = (actualCost * 110n) / 100n // apply 10% buffer for safety
-  const perEpochRate = costWithBuffer / epochsPerMonth
-
-  return {
-    perMonth: costWithBuffer,
-    perEpoch: perEpochRate,
-    minimumFloor: minimumPricePerMonth,
-    linearCost, // for debugging/comparison
-  }
+  const pricing = decodeResult(abi, result)
+  return pricing as GetServicePricingOutput
 }

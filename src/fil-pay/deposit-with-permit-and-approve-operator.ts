@@ -4,8 +4,11 @@ import { fromNumber, type Hex } from 'ox/Hex'
 import * as Signature from 'ox/Signature'
 import { maxUint256 } from 'ox/Solidity'
 import * as Value from 'ox/Value'
-import { type FilecoinChain, filProvider } from '../utils/constants.ts'
-
+import {
+  type FilecoinChain,
+  filProvider,
+  LOCKUP_PERIOD,
+} from '../utils/constants.ts'
 import { getErc20WithPermitData } from './getErc20WithPermitData.ts'
 import { signErc20Permit } from './signErc20Permit.ts'
 
@@ -29,7 +32,16 @@ const abi = {
   stateMutability: 'nonpayable',
 } as const
 
-export const depositAndApproveOperatorWriteParameters = async ({
+/**
+ * Build write parameters for
+ * `FilecoinPayV1.depositWithPermitAndApproveOperator` — deposits USDFC and
+ * sets max operator approval for the FWSS storage contract in a single tx.
+ *
+ * Use this when the operator is not yet approved or its allowances need to
+ * be reset to `maxUint256`. For deposits where the operator is already
+ * max-approved, prefer {@link depositWithPermitWriteParameters}.
+ */
+export const depositWithPermitAndApproveOperatorWriteParameters = async ({
   privateKey,
   address,
   amount,
@@ -77,7 +89,7 @@ export const depositAndApproveOperatorWriteParameters = async ({
     chain.contracts.storage.address,
     maxUint256,
     maxUint256,
-    30n * 2880n, // lockup period
+    LOCKUP_PERIOD,
   ])
 
   return {

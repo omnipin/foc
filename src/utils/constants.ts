@@ -106,3 +106,64 @@ export const chains = {
   [filecoinMainnet.id]: filecoinMainnet,
   [filecoinCalibration.id]: filecoinCalibration,
 }
+
+/**
+ * Time and size constants for Filecoin FEVM.
+ *
+ * Mirrors `@filoz/synapse-core/utils/constants.TIME_CONSTANTS`.
+ */
+export const TIME_CONSTANTS = {
+  /** Duration of each epoch in seconds on Filecoin (30s per tipset). */
+  EPOCH_DURATION: 30,
+  /** Number of epochs in a day (24 * 60 * 2). */
+  EPOCHS_PER_DAY: 2880n,
+  /** Number of epochs in a month (30 days). */
+  EPOCHS_PER_MONTH: 86400n,
+  /** Number of days in a month (used for pricing calculations). */
+  DAYS_PER_MONTH: 30n,
+  /** Default lockup period in days. */
+  DEFAULT_LOCKUP_DAYS: 30n,
+  /** Default expiry time for EIP-2612 permit signatures (seconds). */
+  PERMIT_DEADLINE_DURATION: 3600,
+} as const
+
+/**
+ * Data size constants.
+ *
+ * Mirrors `@filoz/synapse-core/utils/constants.SIZE_CONSTANTS`.
+ */
+export const SIZE_CONSTANTS = {
+  KiB: 1024n,
+  MiB: 1n << 20n,
+  GiB: 1n << 30n,
+  TiB: 1n << 40n,
+  PiB: 1n << 50n,
+} as const
+
+/**
+ * Default lockup period in epochs (30 days * 2880 epochs/day = 86,400 epochs).
+ */
+export const LOCKUP_PERIOD = TIME_CONSTANTS.DEFAULT_LOCKUP_DAYS *
+  TIME_CONSTANTS.EPOCHS_PER_DAY
+
+/**
+ * Default safety margin (in epochs) when sizing deposits.
+ *
+ * Accounts for epoch drift between balance check and on-chain execution.
+ * 5 epochs * 30s = ~2.5 minutes of headroom. Mirrors synapse-core.
+ */
+export const DEFAULT_BUFFER_EPOCHS = 5n
+
+/**
+ * Default extra runway in epochs beyond the required lockup. 0n = no extra.
+ */
+export const DEFAULT_RUNWAY_EPOCHS = 0n
+
+/**
+ * USDFC sybil fee charged on new dataset creation.
+ *
+ * Extracted from client funds into the payments auction pool to prevent
+ * state-growth spam. Matches `PDPVerifier.USDFC_SYBIL_FEE` (immutable; only
+ * changes with contract upgrade).
+ */
+export const USDFC_SYBIL_FEE = 100_000_000_000_000_000n // 0.1 USDFC

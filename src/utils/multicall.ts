@@ -1,9 +1,8 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
-import type { Address } from 'ox/Address'
-import type { Hex } from 'ox/Hex'
-import type { Provider } from 'ox/Provider'
-import type { FilecoinChain } from './constants.ts'
-
+import { type Address } from 'ox/Address'
+import { type Hex } from 'ox/Hex'
+import { type Provider } from 'ox/Provider'
+import { type FilecoinChain } from './constants.ts'
 const abi = {
   inputs: [
     {

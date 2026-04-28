@@ -1,4 +1,4 @@
-import type { Address } from 'ox/Address'
+import { type Address } from 'ox/Address'
 import * as Provider from 'ox/Provider'
 import { fromHttp } from 'ox/RpcTransport'
 

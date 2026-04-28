@@ -1,5 +1,5 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
-import type { Address } from 'ox/Address'
+import { type Address } from 'ox/Address'
 import { maxUint256 } from 'ox/Solidity'
 import { type FilecoinChain, filProvider } from '../utils/constants.ts'
 

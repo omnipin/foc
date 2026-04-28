@@ -1,12 +1,11 @@
 import { randomInt } from 'node:crypto'
 import { AbiParameters } from 'ox'
-import type { Address } from 'ox/Address'
-import type { Hex } from 'ox/Hex'
+import { type Address } from 'ox/Address'
+import { type Hex } from 'ox/Hex'
 import { sign } from 'ox/Secp256k1'
 import { toHex } from 'ox/Signature'
 import { getSignPayload } from 'ox/TypedData'
-import type { FilecoinChain } from '../utils/constants.ts'
-
+import { type FilecoinChain } from '../utils/constants.ts'
 const abi = ['address', 'uint256', 'string[]', 'string[]', 'bytes'] as const
 
 const metadata = [{ key: 'withIPFSIndexing', value: '' }] as const

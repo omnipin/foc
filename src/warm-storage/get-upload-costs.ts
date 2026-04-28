@@ -1,4 +1,4 @@
-import type { Address } from 'ox/Address'
+import { type Address } from 'ox/Address'
 import { calculateAccountDebt } from '../fil-pay/account-debt.ts'
 import { accounts } from '../fil-pay/accounts.ts'
 import { isFwssMaxApproved } from '../fil-pay/is-fwss-max-approved.ts'

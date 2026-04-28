@@ -1,6 +1,5 @@
-import type { Hex } from 'ox/Hex'
-import type { FilecoinChain } from '../utils/constants.ts'
-
+import { type Hex } from 'ox/Hex'
+import { type FilecoinChain } from '../utils/constants.ts'
 export const createDataSetAndAddPiece = async ({
   pieceCid,
   subPieceCids,

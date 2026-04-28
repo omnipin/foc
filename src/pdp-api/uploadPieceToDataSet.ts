@@ -1,6 +1,5 @@
-import type { Hex } from 'ox/Hex'
-import type { PieceLink } from '../utils/calculatePieceCID.ts'
-
+import { type Hex } from 'ox/Hex'
+import { type PieceLink } from '../utils/calculatePieceCID.ts'
 export const uploadPieceToDataSet = async ({
   pieceCid,
   providerURL,

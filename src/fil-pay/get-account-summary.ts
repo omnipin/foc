@@ -1,4 +1,4 @@
-import type { Address } from 'ox/Address'
+import { type Address } from 'ox/Address'
 import { type FilecoinChain, filProvider } from '../utils/constants.ts'
 import { calculateAccountDebt } from './account-debt.ts'
 import { accounts } from './accounts.ts'

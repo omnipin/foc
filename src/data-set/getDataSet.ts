@@ -1,7 +1,6 @@
 import { decodeResult, encodeData } from 'ox/AbiFunction'
 import { type FilecoinChain, filProvider } from '../utils/constants.ts'
-import type { DataSet } from './types.ts'
-
+import { type DataSet } from './types.ts'
 const abi = {
   type: 'function',
   inputs: [{ name: 'dataSetId', internalType: 'uint256', type: 'uint256' }],

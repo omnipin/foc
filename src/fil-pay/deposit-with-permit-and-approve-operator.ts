@@ -1,5 +1,5 @@
 import { encodeData } from 'ox/AbiFunction'
-import type { Address } from 'ox/Address'
+import { type Address } from 'ox/Address'
 import { fromNumber, type Hex } from 'ox/Hex'
 import * as Signature from 'ox/Signature'
 import { maxUint256 } from 'ox/Solidity'

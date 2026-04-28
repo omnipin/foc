@@ -1,8 +1,8 @@
 import { randomInt } from 'node:crypto'
-import type { Address } from 'ox/Address'
+import { type Address } from 'ox/Address'
 import { getClientDataSets } from '../data-set/getClientDatasets.ts'
 
-import type { FilecoinChain } from '../utils/constants.ts'
+import { type FilecoinChain } from '../utils/constants.ts'
 import { getApprovedSPs } from './getApprovedSPs.ts'
 import { getProviderIdByAddress } from './getProviderIdByAddress.ts'
 

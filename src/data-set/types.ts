@@ -1,5 +1,4 @@
-import type { Address } from 'ox/Address'
-
+import { type Address } from 'ox/Address'
 export type DataSet = {
   pdpRailId: bigint
   cacheMissRailId: bigint

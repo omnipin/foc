@@ -9,6 +9,7 @@ import {
   type FilecoinChain,
   filProvider,
   LOCKUP_PERIOD,
+  USDFC_SYBIL_FEE,
 } from '../utils/constants.ts'
 import { calculateDepositNeeded } from './calculate-deposit-needed.ts'
 import { calculateEffectiveRate } from './calculate-effective-rate.ts'
@@ -112,6 +113,29 @@ export const getUploadCosts = async (
     fundedUntilEpoch,
     currentEpoch,
     bufferEpochs,
+    // When creating a new dataset, the FWSS contract's
+    // `validatePayerOperatorApprovalAndFunds` requires `availableFunds
+    // >= minimumStorageRatePerMonth*LOCKUP_PERIOD/epochsPerMonth + sybilFee`
+    // at *tx execution time* (after the contract settles the payer's
+    // lockup). The legacy buffer logic protects against the account
+    // running out of funds within `bufferEpochs`, but does not enforce
+    // this minimum floor — see calculateBufferAmount for the bug. Pass
+    // the floor (derived from live pricing so it tracks any
+    // `updatePricing()` calls by the FWSS owner) so the deposit is sized
+    // to keep us above it after up to `bufferEpochs` of drift.
+    //
+    // Add-pieces flows have no such on-chain floor check (no new rail,
+    // no sybil fee), so we leave the floor undefined for those.
+    //
+    // The multiply-first formula mirrors line 1246 of
+    // FilecoinWarmStorageService.sol@v1.2.0 to match the contract's
+    // rounding (slightly more conservative than the contract's lockup
+    // truncation, always in the user's favor).
+    availableFundsFloor: isNewDataSet
+      ? (pricing.minimumPricePerMonth * LOCKUP_PERIOD) /
+          pricing.epochsPerMonth +
+        USDFC_SYBIL_FEE
+      : undefined,
   })
 
   const needsFwssMaxApproval = !approved

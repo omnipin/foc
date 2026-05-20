@@ -1,5 +1,6 @@
 import {
   DEFAULT_BUFFER_EPOCHS,
+  DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
   DEFAULT_RUNWAY_EPOCHS,
 } from '../utils/constants.ts'
 import { calculateAdditionalLockupRequired } from './calculate-additional-lockup-required.ts'
@@ -24,11 +25,33 @@ export const calculateRunwayAmount = ({
  * the on-chain execution of a deposit / data-set-creation transaction.
  *
  * Pure function. Mirrors
- * `@filoz/synapse-core/warm-storage/calculateBufferAmount`.
+ * `@filoz/synapse-core/warm-storage/calculateBufferAmount`, with one
+ * additional concern: an optional **floor** that the on-chain
+ * `availableFunds` must satisfy at tx execution. At v1.2.0 of FWSS, this
+ * floor is `(minimumStorageRatePerMonth * DEFAULT_LOCKUP_PERIOD) /
+ * EPOCHS_PER_MONTH + sybilFee`, enforced inline by
+ * `FilecoinWarmStorageService.validatePayerOperatorApprovalAndFunds`. For
+ * runtime use, callers should derive the floor from live
+ * `getServicePricing()` data; for offline / default contexts,
+ * {@link DEFAULT_MINIMUM_NEW_DATASET_LOCKUP} is a sensible value.
  *
  * Uses the *net* rate (current + delta) because in multi-tx flows, earlier
  * transactions create rails that start ticking before later transactions
  * execute.
+ *
+ * @example The bug the floor parameter fixes (real prod failure):
+ *   availableFunds = 0.165 USDFC (just barely above the 0.16 floor)
+ *   netRateAfterUpload = 1.68 USDFC/month  (an account with ~28 active rails)
+ *   rawDepositNeeded = 0n (lockup.total == 0.16 ≤ availableFunds)
+ *   fundedUntilEpoch is thousands of epochs out (so the legacy runway-only
+ *     branch returns 0n)
+ *   → buffer = 0n, depositNeeded = 0n
+ *   → A few epochs of drift drains availableFunds below 0.16
+ *   → on-chain `dataSetCreated` reverts with `InsufficientLockupFunds`
+ *
+ *   With `availableFundsFloor = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP`, the
+ *   buffer is topped up to guarantee `availableFunds + buffer -
+ *   netRate*bufferEpochs >= floor` at tx execution.
  */
 export const calculateBufferAmount = ({
   rawDepositNeeded,
@@ -37,6 +60,7 @@ export const calculateBufferAmount = ({
   currentEpoch,
   availableFunds,
   bufferEpochs,
+  availableFundsFloor,
 }: {
   rawDepositNeeded: bigint
   netRateAfterUpload: bigint
@@ -44,21 +68,49 @@ export const calculateBufferAmount = ({
   currentEpoch: bigint
   availableFunds: bigint
   bufferEpochs: bigint
+  /**
+   * Optional. If set, requires that, after applying the returned buffer,
+   * `availableFunds + buffer - netRateAfterUpload * bufferEpochs >=
+   * availableFundsFloor`. Use this to protect against on-chain minimum-funds
+   * checks that fire regardless of the account's runway (e.g. FWSS
+   * `validatePayerOperatorApprovalAndFunds` requires `availableFunds >=
+   * (minimumStorageRatePerMonth*LOCKUP_PERIOD)/EPOCHS_PER_MONTH + sybilFee`
+   * for any new dataset).
+   *
+   * If omitted, behavior matches the legacy
+   * (synapse-core-equivalent) implementation.
+   */
+  availableFundsFloor?: bigint
 }): bigint => {
+  let baseBuffer: bigint
   if (rawDepositNeeded > 0n) {
     // Deposit is needed — add buffer so it remains sufficient at T_exec.
-    return netRateAfterUpload * bufferEpochs
-  }
-
-  if (fundedUntilEpoch <= currentEpoch + bufferEpochs) {
+    baseBuffer = netRateAfterUpload * bufferEpochs
+  } else if (fundedUntilEpoch <= currentEpoch + bufferEpochs) {
     // No new lockup needed, but the account expires within the buffer window.
     const bufferCost = netRateAfterUpload * bufferEpochs
     const needed = bufferCost - availableFunds
-    return needed > 0n ? needed : 0n
+    baseBuffer = needed > 0n ? needed : 0n
+  } else {
+    // Account has sufficient runway — no runway-based buffer needed.
+    baseBuffer = 0n
   }
 
-  // Account has sufficient runway — no buffer needed.
-  return 0n
+  if (availableFundsFloor === undefined) return baseBuffer
+
+  // Floor guard. The on-chain check sees:
+  //   availableFunds_at_tx = availableFunds + (depositNeeded) - netRate*drift
+  // where `depositNeeded = clamp(rawDepositNeeded, 0n) + buffer`. We need
+  // this to be ≥ floor for any `drift ≤ bufferEpochs`, so:
+  //   availableFunds + clamped(rawDepositNeeded) + buffer
+  //     - netRate * bufferEpochs ≥ floor
+  // Solving for buffer:
+  //   buffer ≥ floor + netRate*bufferEpochs
+  //          - availableFunds - clamped(rawDepositNeeded)
+  const clampedRaw = rawDepositNeeded > 0n ? rawDepositNeeded : 0n
+  const floorBuffer = availableFundsFloor +
+    netRateAfterUpload * bufferEpochs - availableFunds - clampedRaw
+  return floorBuffer > baseBuffer ? floorBuffer : baseBuffer
 }
 
 export type CalculateDepositNeededParams = {
@@ -93,6 +145,23 @@ export type CalculateDepositNeededParams = {
   currentEpoch: bigint
   /** Safety margin in epochs. Defaults to `DEFAULT_BUFFER_EPOCHS` (5n). */
   bufferEpochs?: bigint
+
+  /**
+   * Optional. If set, ensures the deposit is sized so that at on-chain tx
+   * execution time (≤ `bufferEpochs` epochs after this calculation),
+   * `availableFunds >= availableFundsFloor`.
+   *
+   * For new-dataset flows, callers should pass the live
+   * `(minimumPricePerMonth * LOCKUP_PERIOD) / epochsPerMonth + sybilFee`
+   * (or {@link DEFAULT_MINIMUM_NEW_DATASET_LOCKUP} as a default) to mirror
+   * the FWSS `validatePayerOperatorApprovalAndFunds` check.
+   * {@link getUploadCosts} sets this automatically using the live pricing
+   * returned by `getServicePricing()`.
+   *
+   * For add-pieces flows (no new rail, no sybil fee, no floor check
+   * on-chain), leave undefined.
+   */
+  availableFundsFloor?: bigint
 }
 
 /**
@@ -143,8 +212,20 @@ export const calculateDepositNeeded = (
     currentEpoch: params.currentEpoch,
     availableFunds: params.availableFunds,
     bufferEpochs,
+    availableFundsFloor: params.availableFundsFloor,
   })
 
   const clamped = rawDepositNeeded > 0n ? rawDepositNeeded : 0n
   return clamped + buffer
 }
+
+/**
+ * Re-exported for convenience: the default on-chain minimum `availableFunds`
+ * for new (non-CDN) dataset creation, at FWSS v1.2.0's initial pricing.
+ *
+ * Pass this — or, preferably, a value derived from live
+ * `getServicePricing()` data — as `availableFundsFloor` to
+ * {@link calculateDepositNeeded} or {@link calculateBufferAmount} when
+ * `isNewDataSet === true`.
+ */
+export { DEFAULT_MINIMUM_NEW_DATASET_LOCKUP }

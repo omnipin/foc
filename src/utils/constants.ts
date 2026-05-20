@@ -167,3 +167,48 @@ export const DEFAULT_RUNWAY_EPOCHS = 0n
  * changes with contract upgrade).
  */
 export const USDFC_SYBIL_FEE = 100_000_000_000_000_000n // 0.1 USDFC
+
+/**
+ * Initial minimum monthly storage rate at FWSS deployment.
+ *
+ * Matches the value `initialize()` sets `minimumStorageRatePerMonth` to at
+ * v1.2.0 of `FilecoinWarmStorageService.sol`. The FWSS owner can raise this
+ * via `updatePricing()` up to `MAX_MINIMUM_STORAGE_RATE_PER_MONTH` (0.24
+ * USDFC = 4× initial); the live value should be read from
+ * `getServicePricing()` rather than hardcoded for floor calculations.
+ */
+export const INITIAL_MINIMUM_STORAGE_RATE_PER_MONTH = 60_000_000_000_000_000n // 0.06 USDFC
+
+/**
+ * Default minimum on-chain `availableFunds` the FWSS `dataSetCreated` flow
+ * requires for a new (non-CDN) dataset, *at FWSS v1.2.0's initial pricing*.
+ *
+ * Mirrors `FilecoinWarmStorageService.validatePayerOperatorApprovalAndFunds`
+ * (v1.2.0 line 1246) with `includeCDN = false`:
+ *
+ * ```solidity
+ * minimumLockupRequired = (minimumStorageRatePerMonth * DEFAULT_LOCKUP_PERIOD)
+ *                       / EPOCHS_PER_MONTH + USDFC_SYBIL_FEE
+ * ```
+ *
+ * At v1.2.0's initial pricing (`minimumStorageRatePerMonth = 0.06 USDFC`,
+ * `DEFAULT_LOCKUP_PERIOD == EPOCHS_PER_MONTH == 86400`) this equals
+ * `0.06 + 0.1 = 0.16 USDFC`.
+ *
+ * The on-chain check requires `availableFunds >= minimumLockupRequired` at
+ * **transaction execution time**, after the contract settles the payer's
+ * lockup. Clients must size deposits so this still holds after epoch drift
+ * between their local balance read and the on-chain settlement.
+ *
+ * @note `minimumStorageRatePerMonth` is mutable on FWSS v1.2.0 (owner can
+ * raise it up to 0.24 USDFC via `updatePricing()`). Prefer computing the
+ * floor from the live `getServicePricing()` return value for runtime use;
+ * this constant is exported for tests, defaults, and offline tooling that
+ * cannot read live state.
+ *
+ * @see https://github.com/FilOzone/filecoin-services/blob/v1.2.0/service_contracts/src/FilecoinWarmStorageService.sol
+ */
+export const DEFAULT_MINIMUM_NEW_DATASET_LOCKUP =
+  (INITIAL_MINIMUM_STORAGE_RATE_PER_MONTH * LOCKUP_PERIOD) /
+    TIME_CONSTANTS.EPOCHS_PER_MONTH +
+  USDFC_SYBIL_FEE

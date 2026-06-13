@@ -8,31 +8,16 @@
 
 </div>
 
-**@omnipin/foc** is a modular, tree-shakeable TypeScript library for interacting
-with the [Filecoin Onchain Cloud](https://www.filecoin.io/cloud) — Filecoin
-Warm Storage Service (FWSS), Filecoin Pay, the Service Provider Registry, and the
-Curio PDP API. Built on [Ox](https://oxlib.sh). Works in browsers, Deno, Node
-and Bun.
+**@omnipin/foc** is a modular, tree-shakeable TypeScript library for interacting with the [Filecoin Onchain Cloud](https://www.filecoin.io/cloud). Built wirh [Ox](https://oxlib.sh). Works in browsers, Deno, Node and Bun.
 
 ## Features
 
-- **PieceCID computation**. Memory-efficient PieceCID calculation that scales to
-  multi-gigabyte payloads.
-- **Warm Storage pricing & cost orchestration**. Read the live FWSS price list,
-  compute effective storage rates, deposits needed, lockups, and a one-call
-  `getUploadCosts` orchestrator — fully up to date with FWSS **v1.3.0**
-  (size-proportional storage rate + flat dataset fee, lifecycle reserve, and
-  one-time creation fee).
-- **Filecoin Pay integration**. Query account state and debt, resolve funding
-  runway, check USDFC balances, and deposit with EIP-2612 permits — including
-  the combined deposit-and-approve-operator flow.
-- **Service Provider Registry**. Query approved SPs, resolve provider IDs,
-  metadata, and payees, plus `pickProvider` for optimal/affinity-aware SP
-  selection.
-- **Data set management**. Build dataset and add-piece payloads, fetch a
-  client's datasets, and read individual dataset state.
-- **Curio PDP API client**. Create datasets, upload pieces, add pieces to
-  existing datasets, and verify pieces against an SP.
+- **PieceCID computation**. Memory-efficient PieceCID calculation that scales to multi-gigabyte payloads.
+- **Warm Storage pricing & cost orchestration**. One-call `getUploadCosts` to compute the final cost of storage without manual calculations.
+- **Filecoin Pay integration**. Query account state and debt, resolve funding runway, check USDFC balances, and deposit with EIP-2612 permits — including the combined deposit-and-approve-operator flow.
+- **Service Provider Registry**. `pickProvider` for optimal/affinity-aware SP selection.
+- **Data set management**. Build dataset and add-piece payloads, fetch a client's datasets, and read individual dataset state.
+- **Curio PDP API client**. Create datasets, upload pieces, add pieces to existing datasets, and verify pieces against an SP.
 
 ## Install
 

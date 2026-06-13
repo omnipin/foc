@@ -11,14 +11,13 @@
 **@omnipin/foc** is a modular, tree-shakeable TypeScript library for interacting
 with the [Filecoin Onchain Cloud](https://www.filecoin.io/cloud) — Filecoin
 Warm Storage Service (FWSS), Filecoin Pay, the Service Provider Registry, and the
-Curio PDP API. Built on [Ox](https://oxlib.sh), it ships zero heavyweight
-dependencies and runs anywhere Ox does (Deno, Node, Bun, browsers).
+Curio PDP API. Built on [Ox](https://oxlib.sh). Works in browsers, Deno, Node
+and Bun.
 
 ## Features
 
-- **PieceCID computation**. Pure-TS `fr32-sha2-256-trunc254-padded-binary-tree`
-  hashing with a flat-buffer Merkle reduction that scales to multi-gigabyte
-  payloads without exhausting memory.
+- **PieceCID computation**. Memory-efficient PieceCID calculation that scales to
+  multi-gigabyte payloads.
 - **Warm Storage pricing & cost orchestration**. Read the live FWSS price list,
   compute effective storage rates, deposits needed, lockups, and a one-call
   `getUploadCosts` orchestrator — fully up to date with FWSS **v1.3.0**

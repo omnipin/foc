@@ -10,7 +10,9 @@ describe('getClientDatasets', () => {
       address: '0x7D3F0Ca48194490D7C8B60feA6225e817eC52AA9',
     })
 
-    expect(datasets).toEqual([
+    // The address keeps accruing data sets on-chain, so assert that the
+    // known-stable entries are present rather than pinning the full list.
+    const expected = [
       {
         pdpRailId: 17n,
         cacheMissRailId: 0n,
@@ -22,6 +24,8 @@ describe('getClientDatasets', () => {
         clientDataSetId: 67314781n,
         pdpEndEpoch: 5583800n,
         providerId: 1n,
+        pendingOneTimePayments: 0n,
+        lifecycleReserveBalance: 0n,
         dataSetId: 9n,
       },
       {
@@ -35,8 +39,15 @@ describe('getClientDatasets', () => {
         clientDataSetId: 79945734n,
         pdpEndEpoch: 0n,
         providerId: 1n,
+        pendingOneTimePayments: 0n,
+        lifecycleReserveBalance: 0n,
         dataSetId: 476n,
       },
-    ])
+    ]
+
+    for (const want of expected) {
+      const match = datasets.find((ds) => ds.dataSetId === want.dataSetId)
+      expect(match).toEqual(want)
+    }
   })
 })

@@ -6,14 +6,12 @@ import { uploadPieceToDataSet } from './uploadPieceToDataSet.ts'
 
 describe('uploadPieceToDataSet', () => {
   it('should throw on a non-existent data set', async () => {
-    try {
-      await uploadPieceToDataSet({
+    await expect(
+      uploadPieceToDataSet({
         providerURL: 'https://main.ezpdpz.net',
-        pieceCid: calculatePieceCID(new Uint8Array()),
+        pieceCid: calculatePieceCID(new Uint8Array(127)),
         datasetId: randomInt(1000),
-      })
-    } catch (e) {
-      expect((e as Error).message).toEqual('Data set not found')
-    }
+      }),
+    ).rejects.toThrow('Data set not found')
   })
 })

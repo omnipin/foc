@@ -69,6 +69,16 @@ const abi = {
           internalType: 'uint256',
         },
         {
+          name: 'pendingOneTimePayments',
+          type: 'uint96',
+          internalType: 'uint96',
+        },
+        {
+          name: 'lifecycleReserveBalance',
+          type: 'uint96',
+          internalType: 'uint96',
+        },
+        {
           name: 'dataSetId',
           type: 'uint256',
           internalType: 'uint256',

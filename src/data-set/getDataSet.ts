@@ -21,6 +21,16 @@ const abi = {
         { name: 'clientDataSetId', internalType: 'uint256', type: 'uint256' },
         { name: 'pdpEndEpoch', internalType: 'uint256', type: 'uint256' },
         { name: 'providerId', internalType: 'uint256', type: 'uint256' },
+        {
+          name: 'pendingOneTimePayments',
+          internalType: 'uint96',
+          type: 'uint96',
+        },
+        {
+          name: 'lifecycleReserveBalance',
+          internalType: 'uint96',
+          type: 'uint96',
+        },
         { name: 'dataSetId', internalType: 'uint256', type: 'uint256' },
       ],
     },

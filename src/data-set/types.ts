@@ -10,5 +10,7 @@ export type DataSet = {
   clientDataSetId: bigint
   pdpEndEpoch: bigint
   providerId: bigint
+  pendingOneTimePayments: bigint
+  lifecycleReserveBalance: bigint
   dataSetId: bigint
 }

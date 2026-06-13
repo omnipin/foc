@@ -2,7 +2,7 @@
 
 <h1>@omnipin/foc</h1>
 
-[![JSR][jsr-img]][jsr] [![JSR Score][jsr-score-img]][jsr] [![Test Workflow Status][gh-test-img]][gh-actions] [![Publish Workflow Status][gh-publish-img]][gh-actions]
+[![JSR][jsr-img]][jsr] [![Test Workflow Status][gh-test-img]][gh-actions] [![Publish Workflow Status][gh-publish-img]][gh-actions]
 
 <sub>TypeScript toolkit for the Filecoin Onchain Cloud</sub>
 
@@ -108,7 +108,6 @@ const providerId = await pickProvider({
 
 [jsr]: https://jsr.io/@omnipin/foc
 [jsr-img]: https://img.shields.io/jsr/v/@omnipin/foc?style=for-the-badge&logo=jsr&color=%232B4AD4&label=
-[jsr-score-img]: https://img.shields.io/jsr/score/@omnipin/foc?style=for-the-badge&logo=jsr&color=%232B4AD4&label=score
 [gh-actions]: https://github.com/omnipin/foc/actions
 [gh-test-img]: https://img.shields.io/github/actions/workflow/status/omnipin/foc/test.yml?branch=main&style=for-the-badge&logo=github&label=test&color=%232B4AD4
 [gh-publish-img]: https://img.shields.io/github/actions/workflow/status/omnipin/foc/publish.yml?branch=main&style=for-the-badge&logo=github&label=publish&color=%232B4AD4

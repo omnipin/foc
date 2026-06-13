@@ -1,35 +1,53 @@
 import {
+  CREATE_DATA_SET_FEE,
+  LIFECYCLE_RESERVE_TARGET,
   LOCKUP_PERIOD,
   TIME_CONSTANTS,
-  USDFC_SYBIL_FEE,
 } from '../utils/constants.ts'
 import { calculateEffectiveRate } from './calculate-effective-rate.ts'
 
 /**
- * Compute how much additional lockup this upload requires.
+ * Compute how much additional lockup this upload requires under FWSS v1.3.0.
  *
- * Pure function. Mirrors
- * `@filoz/synapse-core/warm-storage/calculateAdditionalLockupRequired`,
- * minus the `withCDN` branch (omnipin does not use CDN).
+ * Pure function. Mirrors the post-upgrade funding model:
+ * - The streaming storage rate (size-proportional + flat dataset fee) drives
+ *   the per-epoch rail rate and its lockup over the lockup period.
+ * - Creating a new dataset locks the {@link LIFECYCLE_RESERVE_TARTGET}
+ *   lifecycle reserve on the PDP rail and records the
+ *   {@link CREATE_DATA_SET_FEE} as a pending one-time payment drawn from it.
+ *   These replace the removed v1.2.x sybil fee.
  *
- * Handles floor-to-floor transitions correctly: when both the current and
- * post-upload sizes are below the floor threshold, the rate delta is zero.
+ * No minimum-rate floor exists anymore, so adding data to a dataset always
+ * has a non-negative rate delta.
  */
 export type CalculateAdditionalLockupRequiredParams = {
   /** Size of new data being uploaded, in bytes. */
   dataSize: bigint
   /** Current total dataset size, in bytes. 0n for new datasets. */
   currentDataSetSize: bigint
-  /** Price per TiB per month from `getServicePrice()`. */
-  pricePerTiBPerMonth: bigint
-  /** Minimum monthly charge from `getServicePrice()`. */
-  minimumPricePerMonth: bigint
+  /** Size-proportional storage rate, per TiB per month (`rates.storagePerTibPerMonth`). */
+  storagePerTibPerMonth: bigint
+  /** Flat per-dataset additive monthly fee (`rates.datasetFeePerMonth`). */
+  datasetFeePerMonth: bigint
   /** Epochs per month. Defaults to `TIME_CONSTANTS.EPOCHS_PER_MONTH`. */
   epochsPerMonth?: bigint
   /** Lockup period in epochs. Defaults to `LOCKUP_PERIOD` (30 days). */
   lockupEpochs?: bigint
   /** Whether a new dataset is being created (vs adding to existing). */
   isNewDataSet: boolean
+  /**
+   * Up-front fixed lockup for a new dataset (lifecycle reserve). Defaults to
+   * {@link LIFECYCLE_RESERVE_TARGET}. Pass `lockups.lifecycleReserveTarget`
+   * from a live `getPriceList()` for runtime use. Ignored when
+   * `isNewDataSet` is false.
+   */
+  lifecycleReserveTarget?: bigint
+  /**
+   * One-time dataset creation fee. Defaults to {@link CREATE_DATA_SET_FEE}.
+   * Pass `fees.createDataSetFee` from a live `getPriceList()` for runtime
+   * use. Ignored when `isNewDataSet` is false.
+   */
+  createDataSetFee?: bigint
 }
 
 export type CalculateAdditionalLockupRequiredOutput = {
@@ -37,9 +55,11 @@ export type CalculateAdditionalLockupRequiredOutput = {
   rateDeltaPerEpoch: bigint
   /** Lockup increase from the rate change = `rateDeltaPerEpoch * lockupEpochs`. */
   rateLockupDelta: bigint
-  /** USDFC sybil fee (only for new datasets). */
-  sybilFee: bigint
-  /** `rateLockupDelta + sybilFee`. */
+  /** Lifecycle reserve locked on creation (only for new datasets). */
+  lifecycleReserve: bigint
+  /** One-time dataset creation fee (only for new datasets). */
+  createDataSetFee: bigint
+  /** `rateLockupDelta + lifecycleReserve + createDataSetFee`. */
   total: bigint
 }
 
@@ -49,16 +69,18 @@ export const calculateAdditionalLockupRequired = (
   const {
     dataSize,
     currentDataSetSize,
-    pricePerTiBPerMonth,
-    minimumPricePerMonth,
+    storagePerTibPerMonth,
+    datasetFeePerMonth,
     epochsPerMonth = TIME_CONSTANTS.EPOCHS_PER_MONTH,
     lockupEpochs = LOCKUP_PERIOD,
     isNewDataSet,
+    lifecycleReserveTarget = LIFECYCLE_RESERVE_TARGET,
+    createDataSetFee = CREATE_DATA_SET_FEE,
   } = params
 
   const rateParams = {
-    pricePerTiBPerMonth,
-    minimumPricePerMonth,
+    storagePerTibPerMonth,
+    datasetFeePerMonth,
     epochsPerMonth,
   }
 
@@ -75,7 +97,6 @@ export const calculateAdditionalLockupRequired = (
       sizeInBytes: currentDataSetSize,
     })
     rateDeltaPerEpoch = newRate.ratePerEpoch - currentRate.ratePerEpoch
-    // Floor-to-floor: if both sizes are below floor, delta is 0.
     if (rateDeltaPerEpoch < 0n) rateDeltaPerEpoch = 0n
   } else {
     // New dataset (or unknown current size): full rate for the new data.
@@ -87,12 +108,14 @@ export const calculateAdditionalLockupRequired = (
   }
 
   const rateLockupDelta = rateDeltaPerEpoch * lockupEpochs
-  const sybilFee = isNewDataSet ? USDFC_SYBIL_FEE : 0n
+  const lifecycleReserve = isNewDataSet ? lifecycleReserveTarget : 0n
+  const oneTimeFee = isNewDataSet ? createDataSetFee : 0n
 
   return {
     rateDeltaPerEpoch,
     rateLockupDelta,
-    sybilFee,
-    total: rateLockupDelta + sybilFee,
+    lifecycleReserve,
+    createDataSetFee: oneTimeFee,
+    total: rateLockupDelta + lifecycleReserve + oneTimeFee,
   }
 }

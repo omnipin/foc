@@ -1,19 +1,21 @@
 import { describe, it } from '@std/testing/bdd'
 import { expect } from '@std/expect'
 import {
+  CREATE_DATA_SET_FEE,
   DEFAULT_BUFFER_EPOCHS,
-  DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+  DEFAULT_NEW_DATASET_FIXED_FUNDS,
+  LIFECYCLE_RESERVE_TARGET,
   TIME_CONSTANTS,
-  USDFC_SYBIL_FEE,
 } from '../utils/constants.ts'
 import {
   calculateBufferAmount,
   calculateDepositNeeded,
 } from './calculate-deposit-needed.ts'
 
+// Mainnet v1.3.0 pricing: 2.5 USDFC/TiB/month + 0.024 USDFC/month flat fee.
 const basePricing = {
-  pricePerTiBPerMonth: 5_000_000_000_000_000_000n,
-  minimumPricePerMonth: 60_000_000_000_000_000n,
+  storagePerTibPerMonth: 2_500_000_000_000_000_000n,
+  datasetFeePerMonth: 24_000_000_000_000_000n,
   epochsPerMonth: TIME_CONSTANTS.EPOCHS_PER_MONTH,
 }
 
@@ -31,42 +33,28 @@ describe('calculateDepositNeeded', () => {
       fundedUntilEpoch: 0n,
       currentEpoch: 0n,
     })
-    // Equals lockup.total exactly (no buffer)
-    // For this size it's floored: rate = floor/epochsPerMonth → small
-    // The exact assertion: deposit > 0n, no extra rate*5 padding.
-    const sybilContribution = USDFC_SYBIL_FEE
-    expect(deposit >= sybilContribution).toBe(true)
+    // Equals lockup.total exactly (no buffer): rate lockup + lifecycle
+    // reserve + creation fee. Must at least cover the fixed funds.
+    expect(deposit >= DEFAULT_NEW_DATASET_FIXED_FUNDS).toBe(true)
   })
 
   it('adds buffer when an existing rail is draining', () => {
-    // Mirrors the failing-run scenario shape.
     const currentLockupRate = 2_777_777_777_776n
-    const deposit = calculateDepositNeeded({
+    // availableFunds below lockup.total (~0.149 USDFC) so a deposit is needed
+    // and the buffer kicks in on top of it.
+    const scenario = {
       ...basePricing,
       dataSize: 1n << 20n,
       currentDataSetSize: 0n,
       isNewDataSet: true,
       currentLockupRate,
       debt: 0n,
-      availableFunds: 159_894_444_444_444_512n, // matches the failed log
+      availableFunds: 50_000_000_000_000_000n, // 0.05 USDFC
       fundedUntilEpoch: 1_000_000_000n,
       currentEpoch: 5_960_000n,
-    })
-    // Buffer contribution = (currentRate + rateDelta) * DEFAULT_BUFFER_EPOCHS
-    // We can't compute exactly without re-running calculateAdditionalLockupRequired,
-    // but the deposit must be strictly greater than the unbuffered amount.
-    const unbuffered = calculateDepositNeeded({
-      ...basePricing,
-      dataSize: 1n << 20n,
-      currentDataSetSize: 0n,
-      isNewDataSet: true,
-      currentLockupRate,
-      debt: 0n,
-      availableFunds: 159_894_444_444_444_512n,
-      fundedUntilEpoch: 1_000_000_000n,
-      currentEpoch: 5_960_000n,
-      bufferEpochs: 0n,
-    })
+    }
+    const deposit = calculateDepositNeeded(scenario)
+    const unbuffered = calculateDepositNeeded({ ...scenario, bufferEpochs: 0n })
     expect(deposit > unbuffered).toBe(true)
     expect(deposit - unbuffered >= currentLockupRate * DEFAULT_BUFFER_EPOCHS)
       .toBe(true)
@@ -80,7 +68,7 @@ describe('calculateDepositNeeded', () => {
       isNewDataSet: true,
       currentLockupRate: 0n,
       debt: 0n,
-      availableFunds: 10_000_000_000_000_000_000n, // 10 USDFC, way more than needed
+      availableFunds: 10_000_000_000_000_000_000n, // 10 USDFC
       fundedUntilEpoch: 1_000_000_000n,
       currentEpoch: 0n,
     })
@@ -114,90 +102,76 @@ describe('calculateDepositNeeded', () => {
     expect(withDebt - withoutDebt).toBe(debt)
   })
 
-  // Regression: walletbeat-beta InsufficientLockupFunds (Filecoin mainnet).
-  // Decoded revert showed availableFunds ~= 0.16 USDFC at getUploadCosts read
-  // time, but on-chain availableFunds < 0.16 by the time createDataSet
-  // executed, because the legacy buffer logic only triggers when
-  // fundedUntilEpoch is within bufferEpochs. With ~28 minimum-rate rails
-  // (lockupRate = 19444444444432 wei/epoch) the runway was thousands of
-  // epochs away, so buffer = 0 even though availableFunds was right at the
-  // FWSS `validatePayerOperatorApprovalAndFunds` floor.
-  describe('on-chain availableFunds floor (DEFAULT_MINIMUM_NEW_DATASET_LOCKUP)', () => {
-    // Mainnet pricing: 2.5 USDFC/TiB/month, 0.06 USDFC/month floor.
-    const mainnetPricing = {
-      pricePerTiBPerMonth: 2_500_000_000_000_000_000n,
-      minimumPricePerMonth: 60_000_000_000_000_000n,
-      epochsPerMonth: TIME_CONSTANTS.EPOCHS_PER_MONTH,
-    }
-    // Drain rate for the walletbeat-beta account at time of failure (28 min rails).
-    const mainnetLockupRate = 19_444_444_444_432n
+  // Regression: on FWSS v1.3.0 a new dataset locks a fixed lifecycle reserve
+  // (0.10 USDFC) + one-time creation fee (0.025 USDFC) on the PDP rail at
+  // creation. If availableFunds sits right at that fixed amount while other
+  // rails drain, a few epochs of drift can drop it below the fixed cost by
+  // the time createDataSet executes. The availableFundsFloor guard tops up
+  // the deposit so the account stays above the fixed funds at tx execution.
+  describe('on-chain availableFunds floor (DEFAULT_NEW_DATASET_FIXED_FUNDS)', () => {
+    // Drain rate high enough that bufferEpochs of drift breaches the fixed
+    // funds floor even when availableFunds starts above the streaming lockup.
+    const drainingRate = 5_000_000_000_000_000n // 0.005 USDFC/epoch
 
-    it('forces a non-zero deposit when availableFunds is just barely above the floor', () => {
-      // availableFunds = floor + 10 wei (tiny excess that any drift eats).
-      // fundedUntilEpoch is thousands of epochs out, so the legacy
+    it('forces a non-zero deposit when drift threatens the fixed-funds floor', () => {
+      // availableFunds just above lockup.total (~0.149 USDFC) → no streaming
+      // deposit needed, and funding stretches far out, so the legacy
       // runway-based buffer returns 0n.
-      const before = calculateDepositNeeded({
-        ...mainnetPricing,
+      const lockupTotal = 149_238_418_579_020_800n // computed for 100 MiB new
+      const scenario = {
+        ...basePricing,
         dataSize: 100n * 1024n * 1024n,
         currentDataSetSize: 0n,
         isNewDataSet: true,
-        currentLockupRate: mainnetLockupRate,
+        currentLockupRate: drainingRate,
         debt: 0n,
-        availableFunds: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP + 10n,
+        availableFunds: lockupTotal + 10n,
         fundedUntilEpoch: 6_040_000n, // far in the future
         currentEpoch: 6_032_000n,
-        // No floor: reproduces the bug.
-      })
+      }
+      const before = calculateDepositNeeded(scenario)
       expect(before).toBe(0n)
 
       const after = calculateDepositNeeded({
-        ...mainnetPricing,
-        dataSize: 100n * 1024n * 1024n,
-        currentDataSetSize: 0n,
-        isNewDataSet: true,
-        currentLockupRate: mainnetLockupRate,
-        debt: 0n,
-        availableFunds: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP + 10n,
-        fundedUntilEpoch: 6_040_000n,
-        currentEpoch: 6_032_000n,
-        availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+        ...scenario,
+        availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
       })
+      expect(after > 0n).toBe(true)
 
-      // Sanity: depositing `after` must leave availableFunds ≥ floor after
-      // up to bufferEpochs of drift at the post-upload rate.
-      // The new rail charges the minimum rate (size below floor), so:
-      const newRailRate = mainnetPricing.minimumPricePerMonth /
-        TIME_CONSTANTS.EPOCHS_PER_MONTH
-      const netRate = mainnetLockupRate + newRailRate
+      // Depositing `after` must leave availableFunds ≥ floor after up to
+      // bufferEpochs of drift at the post-upload rate.
+      const sizePerEpoch =
+        (basePricing.storagePerTibPerMonth * 100n * 1024n * 1024n) /
+        ((1n << 40n) * basePricing.epochsPerMonth)
+      const datasetFeePerEpoch = basePricing.datasetFeePerMonth /
+        basePricing.epochsPerMonth
+      const newRailRate = sizePerEpoch + datasetFeePerEpoch
+      const netRate = drainingRate + newRailRate
       const driftCost = netRate * DEFAULT_BUFFER_EPOCHS
-      const projectedAvail = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP + 10n + after -
-        driftCost
-      expect(projectedAvail >= DEFAULT_MINIMUM_NEW_DATASET_LOCKUP).toBe(true)
+      const projectedAvail = scenario.availableFunds + after - driftCost
+      expect(projectedAvail >= DEFAULT_NEW_DATASET_FIXED_FUNDS).toBe(true)
     })
 
     it('does not over-deposit when availableFunds is comfortably above the floor', () => {
-      // 10 USDFC available — plenty of headroom.
       const deposit = calculateDepositNeeded({
-        ...mainnetPricing,
+        ...basePricing,
         dataSize: 100n * 1024n * 1024n,
         currentDataSetSize: 0n,
         isNewDataSet: true,
-        currentLockupRate: mainnetLockupRate,
+        currentLockupRate: drainingRate,
         debt: 0n,
         availableFunds: 10_000_000_000_000_000_000n,
         fundedUntilEpoch: 6_500_000n,
         currentEpoch: 6_032_000n,
-        availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+        availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
       })
       expect(deposit).toBe(0n)
     })
 
     it('floor is skipped (correctly) when skipBuffer applies', () => {
       // Fresh account: currentLockupRate === 0 && isNewDataSet → skipBuffer.
-      // No rails draining means no risk of drift below the floor before tx
-      // execution — the deposit itself supplies the funds.
       const deposit = calculateDepositNeeded({
-        ...mainnetPricing,
+        ...basePricing,
         dataSize: 100n * 1024n * 1024n,
         currentDataSetSize: 0n,
         isNewDataSet: true,
@@ -206,79 +180,73 @@ describe('calculateDepositNeeded', () => {
         availableFunds: 0n,
         fundedUntilEpoch: 0n,
         currentEpoch: 6_032_000n,
-        availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+        availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
       })
-      // Should match lockup.total = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP (within
-      // floor-rounding caused by the contract's two-factor division).
-      const newRailRate = mainnetPricing.minimumPricePerMonth /
-        TIME_CONSTANTS.EPOCHS_PER_MONTH
-      const expected = newRailRate * 86_400n + USDFC_SYBIL_FEE
+      // Should match lockup.total = rate lockup + lifecycle reserve +
+      // creation fee.
+      const sizePerEpoch =
+        (basePricing.storagePerTibPerMonth * 100n * 1024n * 1024n) /
+        ((1n << 40n) * basePricing.epochsPerMonth)
+      const datasetFeePerEpoch = basePricing.datasetFeePerMonth /
+        basePricing.epochsPerMonth
+      const newRailRate = sizePerEpoch + datasetFeePerEpoch
+      const expected = newRailRate * 86_400n + LIFECYCLE_RESERVE_TARGET +
+        CREATE_DATA_SET_FEE
       expect(deposit).toBe(expected)
     })
 
     it('floor combines with existing runway buffer (takes the larger)', () => {
-      // Account expires within the buffer window AND has low availableFunds.
-      // The legacy runway buffer would supply `rate * 5 - availableFunds`.
-      // The floor would supply `floor + rate * 5 - availableFunds - clampedRaw`.
-      // The latter is larger by exactly `floor - 0` (since clampedRaw matches
-      // when rawDepositNeeded > 0 the floor case is subsumed; this scenario
-      // tests the rawDepositNeeded <= 0n branch).
-      const availableFunds = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP + 1_000n // tiny excess
-      const lockupRate = 1_000_000_000_000n // higher per-epoch drain (3.6 USDFC/month-ish)
+      // availableFunds just above lockup.total (~0.149) so no streaming
+      // deposit is needed (rawDepositNeeded <= 0 → runway branch), but the
+      // account expires within the buffer window AND a high drain rate means
+      // bufferEpochs of drift would breach the 0.125 fixed-funds floor.
+      const lockupTotal = 149_238_418_579_020_800n // 100 MiB new dataset
+      const availableFunds = lockupTotal + 1_000n
+      const lockupRate = 6_000_000_000_000_000n // 0.006 USDFC/epoch
 
+      const scenario = {
+        ...basePricing,
+        dataSize: 100n * 1024n * 1024n,
+        currentDataSetSize: 0n,
+        isNewDataSet: true,
+        currentLockupRate: lockupRate,
+        debt: 0n,
+        availableFunds,
+        fundedUntilEpoch: 6_032_000n + 3n, // expires within buffer
+        currentEpoch: 6_032_000n,
+      }
       const withFloor = calculateDepositNeeded({
-        ...mainnetPricing,
-        dataSize: 100n * 1024n * 1024n,
-        currentDataSetSize: 0n,
-        isNewDataSet: true,
-        currentLockupRate: lockupRate,
-        debt: 0n,
-        availableFunds,
-        fundedUntilEpoch: 6_032_000n + 3n, // expires in 3 epochs — within buffer
-        currentEpoch: 6_032_000n,
-        availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+        ...scenario,
+        availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
       })
-      const withoutFloor = calculateDepositNeeded({
-        ...mainnetPricing,
-        dataSize: 100n * 1024n * 1024n,
-        currentDataSetSize: 0n,
-        isNewDataSet: true,
-        currentLockupRate: lockupRate,
-        debt: 0n,
-        availableFunds,
-        fundedUntilEpoch: 6_032_000n + 3n,
-        currentEpoch: 6_032_000n,
-      })
+      const withoutFloor = calculateDepositNeeded(scenario)
       expect(withFloor > withoutFloor).toBe(true)
     })
 
     it('add-pieces flows are untouched (no floor parameter)', () => {
-      // No new rail created → no on-chain floor check → no protection needed.
       const deposit = calculateDepositNeeded({
-        ...mainnetPricing,
+        ...basePricing,
         dataSize: 100n * 1024n * 1024n,
         currentDataSetSize: 100n * 1024n * 1024n,
         isNewDataSet: false,
-        currentLockupRate: mainnetLockupRate,
+        currentLockupRate: drainingRate,
         debt: 0n,
         availableFunds: 100n, // basically zero
         fundedUntilEpoch: 6_032_000n + 50n,
         currentEpoch: 6_032_000n,
         // No availableFundsFloor — mirrors getUploadCosts behavior.
       })
-      // The size delta from doubling 100 MiB stays below the floor, so the
-      // rate delta is 0 — no new lockup needed beyond drift.
-      // Without a floor we just return the legacy runway buffer.
-      expect(deposit < DEFAULT_MINIMUM_NEW_DATASET_LOCKUP).toBe(true)
+      // No fixed funds locked on add-pieces, so the deposit stays well below
+      // the new-dataset fixed cost.
+      expect(deposit < DEFAULT_NEW_DATASET_FIXED_FUNDS).toBe(true)
     })
   })
 })
 
 describe('calculateBufferAmount with availableFundsFloor', () => {
-  // Base scenario shared across cases.
   const base = {
-    netRateAfterUpload: 19_444_444_444_432n, // 28-rail drain
-    fundedUntilEpoch: 6_040_000n, // way past bufferEpochs window
+    netRateAfterUpload: 19_444_444_444_432n,
+    fundedUntilEpoch: 6_040_000n,
     currentEpoch: 6_032_000n,
     bufferEpochs: 5n,
   }
@@ -293,52 +261,46 @@ describe('calculateBufferAmount with availableFundsFloor', () => {
   })
 
   it('top-ups the buffer when availableFunds drifts below floor', () => {
-    // availableFunds = floor + 1 wei
     const buffer = calculateBufferAmount({
       ...base,
       rawDepositNeeded: -1n,
-      availableFunds: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP + 1n,
-      availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+      availableFunds: DEFAULT_NEW_DATASET_FIXED_FUNDS + 1n,
+      availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
     })
-    // Expected: floor + netRate*buffer - availableFunds - 0 (clampedRaw=0)
-    const expected = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP +
+    const expected = DEFAULT_NEW_DATASET_FIXED_FUNDS +
       base.netRateAfterUpload * base.bufferEpochs -
-      (DEFAULT_MINIMUM_NEW_DATASET_LOCKUP + 1n)
+      (DEFAULT_NEW_DATASET_FIXED_FUNDS + 1n)
     expect(buffer).toBe(expected)
   })
 
   it('floor is no-op when availableFunds already covers drift', () => {
-    // availableFunds = floor + drift_cost + slack
     const slack = 100n
-    const availableFunds = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP +
+    const availableFunds = DEFAULT_NEW_DATASET_FIXED_FUNDS +
       base.netRateAfterUpload * base.bufferEpochs + slack
     const buffer = calculateBufferAmount({
       ...base,
       rawDepositNeeded: -1n,
       availableFunds,
-      availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+      availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
     })
     expect(buffer).toBe(0n)
   })
 
   it('floor takes max with the existing-runway buffer', () => {
-    // Account expires within bufferEpochs (legacy branch triggers), AND
-    // availableFunds < floor + drift. Result is the larger of the two.
     const buffer = calculateBufferAmount({
       ...base,
       fundedUntilEpoch: 6_032_002n, // within 5 of currentEpoch
       rawDepositNeeded: -1n,
-      availableFunds: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP / 2n,
-      availableFundsFloor: DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+      availableFunds: DEFAULT_NEW_DATASET_FIXED_FUNDS / 2n,
+      availableFundsFloor: DEFAULT_NEW_DATASET_FIXED_FUNDS,
     })
 
     const legacy = base.netRateAfterUpload * base.bufferEpochs -
-      DEFAULT_MINIMUM_NEW_DATASET_LOCKUP / 2n
-    const floor = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP +
+      DEFAULT_NEW_DATASET_FIXED_FUNDS / 2n
+    const floor = DEFAULT_NEW_DATASET_FIXED_FUNDS +
       base.netRateAfterUpload * base.bufferEpochs -
-      DEFAULT_MINIMUM_NEW_DATASET_LOCKUP / 2n
+      DEFAULT_NEW_DATASET_FIXED_FUNDS / 2n
     expect(buffer).toBe(floor > legacy ? floor : legacy)
-    // floor should win here since DEFAULT_MINIMUM_NEW_DATASET_LOCKUP > 0.
     expect(buffer).toBe(floor)
   })
 })

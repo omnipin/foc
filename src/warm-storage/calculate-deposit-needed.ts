@@ -1,6 +1,6 @@
 import {
   DEFAULT_BUFFER_EPOCHS,
-  DEFAULT_MINIMUM_NEW_DATASET_LOCKUP,
+  DEFAULT_NEW_DATASET_FIXED_FUNDS,
   DEFAULT_RUNWAY_EPOCHS,
 } from '../utils/constants.ts'
 import { calculateAdditionalLockupRequired } from './calculate-additional-lockup-required.ts'
@@ -27,31 +27,16 @@ export const calculateRunwayAmount = ({
  * Pure function. Mirrors
  * `@filoz/synapse-core/warm-storage/calculateBufferAmount`, with one
  * additional concern: an optional **floor** that the on-chain
- * `availableFunds` must satisfy at tx execution. At v1.2.0 of FWSS, this
- * floor is `(minimumStorageRatePerMonth * DEFAULT_LOCKUP_PERIOD) /
- * EPOCHS_PER_MONTH + sybilFee`, enforced inline by
- * `FilecoinWarmStorageService.validatePayerOperatorApprovalAndFunds`. For
- * runtime use, callers should derive the floor from live
- * `getServicePricing()` data; for offline / default contexts,
- * {@link DEFAULT_MINIMUM_NEW_DATASET_LOCKUP} is a sensible value.
+ * `availableFunds` must satisfy at tx execution. As of FWSS v1.3.0, creating
+ * a dataset locks a fixed lifecycle reserve plus a one-time creation fee on
+ * the PDP rail, so callers should size `availableFunds` to cover that fixed
+ * cost ({@link DEFAULT_NEW_DATASET_FIXED_FUNDS}, or the live
+ * `lockups.lifecycleReserveTarget + fees.createDataSetFee` from
+ * `getPriceList()`) on top of the streaming-rate lockup.
  *
  * Uses the *net* rate (current + delta) because in multi-tx flows, earlier
  * transactions create rails that start ticking before later transactions
  * execute.
- *
- * @example The bug the floor parameter fixes (real prod failure):
- *   availableFunds = 0.165 USDFC (just barely above the 0.16 floor)
- *   netRateAfterUpload = 1.68 USDFC/month  (an account with ~28 active rails)
- *   rawDepositNeeded = 0n (lockup.total == 0.16 ≤ availableFunds)
- *   fundedUntilEpoch is thousands of epochs out (so the legacy runway-only
- *     branch returns 0n)
- *   → buffer = 0n, depositNeeded = 0n
- *   → A few epochs of drift drains availableFunds below 0.16
- *   → on-chain `dataSetCreated` reverts with `InsufficientLockupFunds`
- *
- *   With `availableFundsFloor = DEFAULT_MINIMUM_NEW_DATASET_LOCKUP`, the
- *   buffer is topped up to guarantee `availableFunds + buffer -
- *   netRate*bufferEpochs >= floor` at tx execution.
  */
 export const calculateBufferAmount = ({
   rawDepositNeeded,
@@ -72,10 +57,9 @@ export const calculateBufferAmount = ({
    * Optional. If set, requires that, after applying the returned buffer,
    * `availableFunds + buffer - netRateAfterUpload * bufferEpochs >=
    * availableFundsFloor`. Use this to protect against on-chain minimum-funds
-   * checks that fire regardless of the account's runway (e.g. FWSS
-   * `validatePayerOperatorApprovalAndFunds` requires `availableFunds >=
-   * (minimumStorageRatePerMonth*LOCKUP_PERIOD)/EPOCHS_PER_MONTH + sybilFee`
-   * for any new dataset).
+   * requirements that fire regardless of the account's runway (e.g. the
+   * fixed lifecycle reserve + creation fee a new FWSS v1.3.0 dataset locks
+   * on the PDP rail at creation).
    *
    * If omitted, behavior matches the legacy
    * (synapse-core-equivalent) implementation.
@@ -118,10 +102,10 @@ export type CalculateDepositNeededParams = {
   dataSize: bigint
   /** Current total dataset size, in bytes. 0n for new datasets. */
   currentDataSetSize: bigint
-  /** Price per TiB per month from `getServicePrice()`. */
-  pricePerTiBPerMonth: bigint
-  /** Minimum monthly charge from `getServicePrice()`. */
-  minimumPricePerMonth: bigint
+  /** Size-proportional storage rate, per TiB per month (`rates.storagePerTibPerMonth`). */
+  storagePerTibPerMonth: bigint
+  /** Flat per-dataset additive monthly fee (`rates.datasetFeePerMonth`). */
+  datasetFeePerMonth: bigint
   /** Epochs per month. */
   epochsPerMonth?: bigint
   /** Lockup period in epochs. */
@@ -147,19 +131,33 @@ export type CalculateDepositNeededParams = {
   bufferEpochs?: bigint
 
   /**
+   * Up-front fixed lockup for a new dataset (lifecycle reserve). Forwarded to
+   * {@link calculateAdditionalLockupRequired}; defaults there to
+   * {@link LIFECYCLE_RESERVE_TARGET}. Pass `lockups.lifecycleReserveTarget`
+   * from a live `getPriceList()` for runtime use.
+   */
+  lifecycleReserveTarget?: bigint
+  /**
+   * One-time dataset creation fee. Forwarded to
+   * {@link calculateAdditionalLockupRequired}; defaults there to
+   * {@link CREATE_DATA_SET_FEE}. Pass `fees.createDataSetFee` from a live
+   * `getPriceList()` for runtime use.
+   */
+  createDataSetFee?: bigint
+
+  /**
    * Optional. If set, ensures the deposit is sized so that at on-chain tx
    * execution time (≤ `bufferEpochs` epochs after this calculation),
    * `availableFunds >= availableFundsFloor`.
    *
    * For new-dataset flows, callers should pass the live
-   * `(minimumPricePerMonth * LOCKUP_PERIOD) / epochsPerMonth + sybilFee`
-   * (or {@link DEFAULT_MINIMUM_NEW_DATASET_LOCKUP} as a default) to mirror
-   * the FWSS `validatePayerOperatorApprovalAndFunds` check.
-   * {@link getUploadCosts} sets this automatically using the live pricing
-   * returned by `getServicePricing()`.
+   * `lockups.lifecycleReserveTarget + fees.createDataSetFee`
+   * (or {@link DEFAULT_NEW_DATASET_FIXED_FUNDS} as a default) so the deposit
+   * keeps the account above the fixed funds the FWSS creation flow locks.
+   * {@link getUploadCosts} sets this automatically using the live price list
+   * returned by `getPriceList()`.
    *
-   * For add-pieces flows (no new rail, no sybil fee, no floor check
-   * on-chain), leave undefined.
+   * For add-pieces flows (no new rail, no fixed lockup), leave undefined.
    */
   availableFundsFloor?: bigint
 }
@@ -181,11 +179,13 @@ export const calculateDepositNeeded = (
   const lockup = calculateAdditionalLockupRequired({
     dataSize: params.dataSize,
     currentDataSetSize: params.currentDataSetSize,
-    pricePerTiBPerMonth: params.pricePerTiBPerMonth,
-    minimumPricePerMonth: params.minimumPricePerMonth,
+    storagePerTibPerMonth: params.storagePerTibPerMonth,
+    datasetFeePerMonth: params.datasetFeePerMonth,
     epochsPerMonth: params.epochsPerMonth,
     lockupEpochs: params.lockupEpochs,
     isNewDataSet: params.isNewDataSet,
+    lifecycleReserveTarget: params.lifecycleReserveTarget,
+    createDataSetFee: params.createDataSetFee,
   })
 
   const netRateAfterUpload = params.currentLockupRate + lockup.rateDeltaPerEpoch
@@ -220,12 +220,12 @@ export const calculateDepositNeeded = (
 }
 
 /**
- * Re-exported for convenience: the default on-chain minimum `availableFunds`
- * for new (non-CDN) dataset creation, at FWSS v1.2.0's initial pricing.
+ * Re-exported for convenience: the default up-front fixed USDFC a new
+ * (non-CDN) dataset locks at FWSS v1.3.0 (lifecycle reserve + creation fee).
  *
- * Pass this — or, preferably, a value derived from live
- * `getServicePricing()` data — as `availableFundsFloor` to
- * {@link calculateDepositNeeded} or {@link calculateBufferAmount} when
- * `isNewDataSet === true`.
+ * Pass this — or, preferably, a value derived from a live `getPriceList()`
+ * (`lockups.lifecycleReserveTarget + fees.createDataSetFee`) — as
+ * `availableFundsFloor` to {@link calculateDepositNeeded} or
+ * {@link calculateBufferAmount} when `isNewDataSet === true`.
  */
-export { DEFAULT_MINIMUM_NEW_DATASET_LOCKUP }
+export { DEFAULT_NEW_DATASET_FIXED_FUNDS }

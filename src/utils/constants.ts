@@ -56,7 +56,10 @@ export const filecoinMainnet = {
       address: '0xf55dDbf63F1b55c3F1D4FA7e339a68AB7b64A5eB',
     },
     storageView: {
-      address: '0xB1B3A3d979c1f233c1021EF98dff9c0932FF1bb9',
+      // Redeployed in the FWSS v1.3.0 upgrade (the previous view
+      // 0xB1B3A3d979c1f233c1021EF98dff9c0932FF1bb9 is bound to incompatible
+      // storage and now reverts). Confirmed live via proxy.viewContractAddress().
+      address: '0xAD28BBF18A72f728Ed816D07F5a1d7Ec40D68b5e',
     },
   },
   blockExplorer: 'https://filecoin.blockscout.com',
@@ -85,7 +88,10 @@ export const filecoinCalibration = {
       address: '0x839e5c9988e4e9977d40708d0094103c0839Ac9D',
     },
     storageView: {
-      address: '0x537320bd004a7FDd3c1932ca64BD88268301322A',
+      // Redeployed in the FWSS v1.3.0 upgrade (the previous view
+      // 0x537320bd004a7FDd3c1932ca64BD88268301322A is bound to incompatible
+      // storage and now reverts). Confirmed live via proxy.viewContractAddress().
+      address: '0xF4B446171b3677fD2B9b183a9fB76d517365700a',
     },
   },
   blockExplorer: 'https://filecoin-testnet.blockscout.com',
@@ -160,55 +166,111 @@ export const DEFAULT_BUFFER_EPOCHS = 5n
 export const DEFAULT_RUNWAY_EPOCHS = 0n
 
 /**
- * USDFC sybil fee charged on new dataset creation.
+ * Default FWSS price list for the USDFC token, as of FWSS v1.3.0.
  *
- * Extracted from client funds into the payments auction pool to prevent
- * state-growth spam. Matches `PDPVerifier.USDFC_SYBIL_FEE` (immutable; only
- * changes with contract upgrade).
+ * Mirrors the constants in
+ * `service_contracts/src/lib/PriceListUSDFC.sol` at the `v1.3.0` tag. These
+ * are the values baked into the deployed implementation; the canonical
+ * runtime source is `FilecoinWarmStorageServiceStateView.getPriceList()`
+ * (see {@link getPriceList}). This constant is exported for tests, defaults,
+ * and offline tooling that cannot read live state.
+ *
+ * USDFC has 18 decimals, so `1 USDFC = 10n ** 18n`. All amounts are in the
+ * token's smallest unit. Streaming rates are per-month; per-epoch values are
+ * derived by dividing by {@link TIME_CONSTANTS.EPOCHS_PER_MONTH} (86,400).
+ *
+ * @note The legacy minimum monthly storage-rate floor and the `0.1 USDFC`
+ * sybil fee were both removed in v1.3.0. Pricing is now a size-proportional
+ * storage rate plus a flat `datasetFeePerMonth`, and new-dataset funding is
+ * sized around the lifecycle reserve + per-operation fees instead.
+ *
+ * @see https://github.com/FilOzone/filecoin-services/releases/tag/v1.3.0
  */
-export const USDFC_SYBIL_FEE = 100_000_000_000_000_000n // 0.1 USDFC
+export const DEFAULT_USDFC_PRICE_LIST = {
+  rates: {
+    /** Size-proportional storage rate, per TiB per month. 2.5 USDFC. */
+    storagePerTibPerMonth: 2_500_000_000_000_000_000n,
+    /** Flat per-dataset additive monthly fee. 0.024 USDFC. */
+    datasetFeePerMonth: 24_000_000_000_000_000n,
+    /** CDN egress price, per TiB. 7 USDFC. */
+    cdnEgressPerTib: 7_000_000_000_000_000_000n,
+    /** Cache-miss egress price, per TiB. 7 USDFC. */
+    cacheMissEgressPerTib: 7_000_000_000_000_000_000n,
+  },
+  fees: {
+    /** One-time fee charged on dataset creation. 0.025 USDFC. */
+    createDataSetFee: 25_000_000_000_000_000n,
+    /** Base fee per `addPieces` call. 0.0005 USDFC. */
+    addPiecesBaseFee: 500_000_000_000_000n,
+    /** Additional fee per piece added. 0.0003 USDFC. */
+    addPiecesPerPieceFee: 300_000_000_000_000n,
+    /** Fee per `schedulePieceRemovals` call. 0.002 USDFC. */
+    schedulePieceRemovalsFee: 2_000_000_000_000_000n,
+    /** Consent-based (signed payer) termination fee. 0.00112 USDFC. */
+    terminateFee: 1_120_000_000_000_000n,
+  },
+  lockups: {
+    /** Fixed lifecycle reserve locked on the PDP rail. 0.10 USDFC. */
+    lifecycleReserveTarget: 100_000_000_000_000_000n,
+    /** Reserve balance that triggers a top-up. 0.005 USDFC. */
+    replenishThreshold: 5_000_000_000_000_000n,
+    /** Default PDP lockup period in epochs (30 days). */
+    defaultLockupPeriod: 86_400n,
+    /** CDN rail fixed lockup. 0.7 USDFC. */
+    cdnLockupAmount: 700_000_000_000_000_000n,
+    /** Cache-miss rail fixed lockup. 0.3 USDFC. */
+    cacheMissLockupAmount: 300_000_000_000_000_000n,
+    /** CDN/cache-miss settle window in epochs (5 days). */
+    cdnLockupPeriod: 14_400n,
+  },
+} as const
 
 /**
- * Initial minimum monthly storage rate at FWSS deployment.
- *
- * Matches the value `initialize()` sets `minimumStorageRatePerMonth` to at
- * v1.2.0 of `FilecoinWarmStorageService.sol`. The FWSS owner can raise this
- * via `updatePricing()` up to `MAX_MINIMUM_STORAGE_RATE_PER_MONTH` (0.24
- * USDFC = 4× initial); the live value should be read from
- * `getServicePricing()` rather than hardcoded for floor calculations.
+ * Flat per-dataset additive monthly fee, in USDFC's smallest unit (0.024
+ * USDFC). Added on top of the size-proportional storage rate. Mirrors
+ * `PriceListUSDFC.DATASET_FEE_PER_MONTH` at FWSS v1.3.0.
  */
-export const INITIAL_MINIMUM_STORAGE_RATE_PER_MONTH = 60_000_000_000_000_000n // 0.06 USDFC
+export const DATASET_FEE_PER_MONTH =
+  DEFAULT_USDFC_PRICE_LIST.rates.datasetFeePerMonth
 
 /**
- * Default minimum on-chain `availableFunds` the FWSS `dataSetCreated` flow
- * requires for a new (non-CDN) dataset, *at FWSS v1.2.0's initial pricing*.
- *
- * Mirrors `FilecoinWarmStorageService.validatePayerOperatorApprovalAndFunds`
- * (v1.2.0 line 1246) with `includeCDN = false`:
- *
- * ```solidity
- * minimumLockupRequired = (minimumStorageRatePerMonth * DEFAULT_LOCKUP_PERIOD)
- *                       / EPOCHS_PER_MONTH + USDFC_SYBIL_FEE
- * ```
- *
- * At v1.2.0's initial pricing (`minimumStorageRatePerMonth = 0.06 USDFC`,
- * `DEFAULT_LOCKUP_PERIOD == EPOCHS_PER_MONTH == 86400`) this equals
- * `0.06 + 0.1 = 0.16 USDFC`.
- *
- * The on-chain check requires `availableFunds >= minimumLockupRequired` at
- * **transaction execution time**, after the contract settles the payer's
- * lockup. Clients must size deposits so this still holds after epoch drift
- * between their local balance read and the on-chain settlement.
- *
- * @note `minimumStorageRatePerMonth` is mutable on FWSS v1.2.0 (owner can
- * raise it up to 0.24 USDFC via `updatePricing()`). Prefer computing the
- * floor from the live `getServicePricing()` return value for runtime use;
- * this constant is exported for tests, defaults, and offline tooling that
- * cannot read live state.
- *
- * @see https://github.com/FilOzone/filecoin-services/blob/v1.2.0/service_contracts/src/FilecoinWarmStorageService.sol
+ * Per-dataset fee converted to a per-epoch rate, matching the contract's
+ * `DATASET_FEE_PER_EPOCH = DATASET_FEE_PER_MONTH / EPOCHS_PER_MONTH`
+ * (floored). This is the flat term added to every non-empty dataset's
+ * per-epoch storage rate.
  */
-export const DEFAULT_MINIMUM_NEW_DATASET_LOCKUP =
-  (INITIAL_MINIMUM_STORAGE_RATE_PER_MONTH * LOCKUP_PERIOD) /
-    TIME_CONSTANTS.EPOCHS_PER_MONTH +
-  USDFC_SYBIL_FEE
+export const DATASET_FEE_PER_EPOCH = DATASET_FEE_PER_MONTH /
+  TIME_CONSTANTS.EPOCHS_PER_MONTH
+
+/**
+ * One-time fee charged out of the lifecycle reserve when a dataset is
+ * created (0.025 USDFC). Mirrors `PriceListUSDFC.CREATE_DATA_SET_FEE`.
+ */
+export const CREATE_DATA_SET_FEE =
+  DEFAULT_USDFC_PRICE_LIST.fees.createDataSetFee
+
+/**
+ * Fixed lifecycle reserve locked on the PDP rail at dataset creation (0.10
+ * USDFC). Mirrors `PriceListUSDFC.LIFECYCLE_RESERVE_TARGET`. Replaces the
+ * removed v1.2.x sybil fee as the up-front cost of creating a dataset.
+ */
+export const LIFECYCLE_RESERVE_TARGET =
+  DEFAULT_USDFC_PRICE_LIST.lockups.lifecycleReserveTarget
+
+/**
+ * Default up-front USDFC a payer must have available for a new (non-CDN)
+ * dataset at FWSS v1.3.0, beyond the streaming-rate lockup.
+ *
+ * At creation the contract locks the {@link LIFECYCLE_RESERVE_TARGET} (0.10
+ * USDFC) on the PDP rail and records the {@link CREATE_DATA_SET_FEE} (0.025
+ * USDFC) as a pending one-time payment drawn from that reserve. Sizing
+ * deposits to cover `lifecycleReserveTarget + createDataSetFee` keeps the
+ * creation flow funded.
+ *
+ * This replaces the removed v1.2.x `DEFAULT_MINIMUM_NEW_DATASET_LOCKUP`
+ * (minimum-rate floor + sybil fee), which no longer exists on-chain.
+ *
+ * @see https://github.com/FilOzone/filecoin-services/releases/tag/v1.3.0
+ */
+export const DEFAULT_NEW_DATASET_FIXED_FUNDS = LIFECYCLE_RESERVE_TARGET +
+  CREATE_DATA_SET_FEE

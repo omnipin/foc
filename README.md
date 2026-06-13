@@ -8,7 +8,7 @@
 
 </div>
 
-**@omnipin/foc** is a modular, tree-shakeable TypeScript library for interacting with the [Filecoin Onchain Cloud](https://www.filecoin.io/cloud). Built wirh [Ox](https://oxlib.sh). Works in browsers, Deno, Node and Bun.
+**@omnipin/foc** is a modular, tree-shakeable TypeScript library for interacting with the [Filecoin Onchain Cloud](https://www.filecoin.io/cloud). Built with [Ox](https://oxlib.sh). Works in browsers, Deno, Node and Bun.
 
 ## Features
 
@@ -22,20 +22,14 @@
 ## Install
 
 ```sh
-# Deno
-deno add jsr:@omnipin/foc
-
-# npm
-npx jsr add @omnipin/foc
+# Bun
+bunx jsr add @omnipin/foc
 
 # pnpm
 pnpm dlx jsr add @omnipin/foc
 
-# Yarn
-yarn dlx jsr add @omnipin/foc
-
-# Bun
-bunx jsr add @omnipin/foc
+# Deno
+deno add jsr:@omnipin/foc
 ```
 
 ## Usage

@@ -8,9 +8,10 @@ import { sha256 } from 'multiformats/hashes/sha2'
 import { calculatePieceCID } from '../utils/calculatePieceCID.ts'
 import { uploadPiece } from './uploadPiece.ts'
 
-// random payload to test uploads
+// Random payload to test uploads. Curio enforces a minimum piece size of
+// 127 raw bytes (PieceSizeMinLimit), so repeat the message well past it.
 const payload = new TextEncoder().encode(
-  `hello world to Filecoin ${randomInt(1000).toString()}`,
+  `hello world to Filecoin ${randomInt(1000).toString()} `.repeat(64),
 )
 const hash = await sha256.digest(raw.encode(payload))
 const root = CID.create(1, raw.code, hash)
